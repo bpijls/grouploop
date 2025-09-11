@@ -1,8 +1,12 @@
 {
 	"folders": [
-		{
-			"path": "."
-		}
-	],
+        {
+            "path": "."
+        },
+        {
+            "name": "grouploop-firmware",
+            "path": "grouploop-firmware"
+        }
+    ],
     "settings": {}
 }
