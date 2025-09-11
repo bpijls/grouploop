@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  grouploop-socket:
+    build:
+      context: ./socket-server
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:5003:5000"
+    volumes:
+      - ./socket-server:/app
+    environment:
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
