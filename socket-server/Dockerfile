@@ -15,5 +15,5 @@ EXPOSE 5000
 ENV HOST=0.0.0.0 \
     PORT=5000
 
-CMD ["python", "./app/app.py"]
+CMD ["python", "./app/test.py"]
 
