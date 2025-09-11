@@ -9,5 +9,5 @@ COPY . .
 
 EXPOSE 5000
 
-CMD ["python", "./app/test.py", "--host=0.0.0.0", "--port=5000"]
+CMD ["python", "./app/app.py", "--host=0.0.0.0", "--port=5000"]
 
