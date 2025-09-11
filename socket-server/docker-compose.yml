@@ -1,13 +1,13 @@
 version: '3.9'
 
 services:
-  socket:
+  grouploop-socket:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: grouploop-socket
     ports:
-      - "5000:5000"
+      - "127.0.0.1:5003:5000"
     environment:
       - HOST=0.0.0.0
       - PORT=5000
@@ -15,4 +15,6 @@ services:
       # - DEBUG=1
       # - SECRET_KEY=change-me
     restart: unless-stopped
+    volumes:
+      - .:/app
 
