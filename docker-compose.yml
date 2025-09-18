@@ -17,6 +17,6 @@ services:
       context: ./socket-client
       dockerfile: Dockerfile
     ports:
-      - "8080:8080" # Flask client UI
+      - "5004:5000" # Flask client UI
     volumes:
       - ./socket-client:/app

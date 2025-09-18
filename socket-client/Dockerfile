@@ -13,9 +13,9 @@ COPY app /app
 # Environment
 ENV FLASK_APP=app.app \
     FLASK_RUN_HOST=0.0.0.0 \
-    FLASK_RUN_PORT=5004 \
+    FLASK_RUN_PORT=5000 \
     PYTHONUNBUFFERED=1
 
-EXPOSE 5004
+EXPOSE 5000
 
 CMD ["flask", "run"]
