@@ -11,7 +11,7 @@ RUN pip install --no-cache-dir -r /app/requirements.txt
 COPY app /app
 
 # Environment
-ENV FLASK_APP=app.py \
+ENV FLASK_APP=app.app \
     FLASK_RUN_HOST=0.0.0.0 \
     FLASK_RUN_PORT=5004 \
     PYTHONUNBUFFERED=1
