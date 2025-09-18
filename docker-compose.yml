@@ -5,7 +5,7 @@ services:
       context: ./socket-server
       dockerfile: Dockerfile
     ports:
-      - "127.0.0.1:5003:5000" # WebSocket server
+      - "5003:5000" # WebSocket server (bind on all interfaces)
     volumes:
       - ./socket-server:/app
     environment:
