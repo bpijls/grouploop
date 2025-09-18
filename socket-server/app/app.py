@@ -27,13 +27,13 @@ async def handle_websocket_connection(websocket: WebSocketServerProtocol) -> Non
                         ax = data.get("ax")
                         ay = data.get("ay")
                         az = data.get("az")
-                        print(f"[ACCEL] ax={ax:.3f}g ay={ay:.3f}g az={az:.3f}g")
+                        print(f"[ACCEL] ax={ax:.3f}g ay={ay:.3f}g az={az:.3f}g", flush=True)
                         printed = True
                 except (json.JSONDecodeError, TypeError, ValueError):
                     pass
 
                 if not printed:
-                    print(f"[MSG] {message}")
+                    print(f"[MSG] {message}", flush=True)
                 # Echo original message to maintain existing behavior
                 await websocket.send(message)
     except websockets.ConnectionClosedOK:
