@@ -6,11 +6,8 @@ services:
       dockerfile: Dockerfile
     ports:
       - "127.0.0.1:5003:5000" # WebSocket server
-      - "127.0.0.1:5004:5001" # Health HTTP server
     volumes:
       - ./socket-server:/app
     environment:
       - WS_HOST=0.0.0.0
       - WS_PORT=5000
-      - HTTP_HOST=0.0.0.0
-      - HTTP_PORT=5001
