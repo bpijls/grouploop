@@ -1,4 +1,5 @@
 import asyncio
+import json
 import os
 from typing import Optional
 
@@ -18,6 +19,22 @@ async def handle_websocket_connection(websocket: WebSocketServerProtocol) -> Non
             if message == "ping":
                 await websocket.send("pong")
             else:
+                # Try to parse accelerometer JSON {"ax":..., "ay":..., "az":...}
+                printed = False
+                try:
+                    data = json.loads(message)
+                    if isinstance(data, dict) and all(k in data for k in ("ax", "ay", "az")):
+                        ax = data.get("ax")
+                        ay = data.get("ay")
+                        az = data.get("az")
+                        print(f"[ACCEL] ax={ax:.3f}g ay={ay:.3f}g az={az:.3f}g")
+                        printed = True
+                except (json.JSONDecodeError, TypeError, ValueError):
+                    pass
+
+                if not printed:
+                    print(f"[MSG] {message}")
+                # Echo original message to maintain existing behavior
                 await websocket.send(message)
     except websockets.ConnectionClosedOK:
         pass
