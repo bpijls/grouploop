@@ -22,8 +22,20 @@ WiFiMulti wifiMulti;
 SPARKFUN_LIS2DH12 accel;
 
 volatile bool wsConnected = false;
-unsigned long lastAccelSendMs = 0;
-const unsigned long accelSendIntervalMs = 100; // 10 Hz
+
+static void sendAccelOnce() {
+	if (!wsConnected) return;
+	// If data available per sensor FIFO, or just read immediately
+	if (accel.available() || true) {
+		float ax = accel.getX() / 980.0f;
+		float ay = accel.getY() / 980.0f;
+		float az = accel.getZ() / 980.0f;
+		String msg = String("{\"ax\":") + String(ax, 3) +
+			String(",\"ay\":") + String(ay, 3) +
+			String(",\"az\":") + String(az, 3) + String("}");
+		webSocket.sendTXT(msg);
+	}
+}
  
  #define USE_SERIAL Serial
  
@@ -54,12 +66,15 @@ const unsigned long accelSendIntervalMs = 100; // 10 Hz
              webSocket.sendTXT("Connected");
             wsConnected = true;
              break;
-         case WStype_TEXT:
-             USE_SERIAL.printf("[WSc] get text: %s\n", payload);
- 
-             // send message to server
-             // webSocket.sendTXT("message here");
-             break;
+        case WStype_TEXT: {
+            USE_SERIAL.printf("[WSc] get text: %s\n", payload);
+            String cmd = String((const char*)payload);
+            cmd.trim();
+            if (cmd == "r") {
+                sendAccelOnce();
+            }
+            break;
+        }
          case WStype_BIN:
              USE_SERIAL.printf("[WSc] get binary length: %u\n", length);
              hexdump(payload, length);
@@ -126,23 +141,5 @@ const unsigned long accelSendIntervalMs = 100; // 10 Hz
  
  void loop() {
 	webSocket.loop();
-
-	// Periodically read accelerometer and send over websocket
-	unsigned long nowMs = millis();
-	if (nowMs - lastAccelSendMs >= accelSendIntervalMs) {
-		lastAccelSendMs = nowMs;
-		if (accel.available()) {
-			float ax = accel.getX() / 980.0f; // convert mg to g
-			float ay = accel.getY() / 980.0f;
-			float az = accel.getZ() / 980.0f;
-
-			if (wsConnected) {
-				String msg = String("{\"ax\":") + String(ax, 3) +
-					String(",\"ay\":") + String(ay, 3) +
-					String(",\"az\":") + String(az, 3) + String("}");
-				webSocket.sendTXT(msg);
-			}
-		}
-	}
  }
  
