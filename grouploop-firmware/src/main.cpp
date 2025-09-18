@@ -94,7 +94,8 @@ const unsigned long accelSendIntervalMs = 100; // 10 Hz
          delay(1000);
      }
  
-    wifiMulti.addAP("iotroam", "rpRhDnGd0Q");
+    //wifiMulti.addAP("iotroam", "rpRhDnGd0Q");
+    wifiMulti.addAP("IOT", "!HVAIOT!");
  
      //WiFi.disconnect();
     while(wifiMulti.run() != WL_CONNECTED) {
