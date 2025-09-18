@@ -40,6 +40,7 @@ async def handle_websocket_connection(websocket: WebSocketServerProtocol) -> Non
         await websocket.send("Connected to GroupLoop WebSocket server")
         # Assign default label based on remote address
         client_labels[websocket] = default_label(websocket)
+        print(f"[CONNECT] {client_labels[websocket]}", flush=True)
 
         async for message in websocket:
             # Basic protocol: respond to "ping" and echo everything else
@@ -84,7 +85,8 @@ async def handle_websocket_connection(websocket: WebSocketServerProtocol) -> Non
         pass
     finally:
         subscribers.discard(websocket)
-        client_labels.pop(websocket, None)
+        label = client_labels.pop(websocket, default_label(websocket))
+        print(f"[DISCONNECT] {label}", flush=True)
 
 
 async def start_websocket_server(host: str, port: int) -> None:
