@@ -13,11 +13,19 @@
  
  #include <WebSocketsClient.h>
  
+#include <Wire.h>
+#include "SparkFun_LIS2DH12.h"
+
  
- WiFiMulti WiFiMulti;
+WiFiMulti wifiMulti;
  WebSocketsClient webSocket;
+SPARKFUN_LIS2DH12 accel;
+
+volatile bool wsConnected = false;
+unsigned long lastAccelSendMs = 0;
+const unsigned long accelSendIntervalMs = 100; // 10 Hz
  
- #define USE_SERIAL Serial1
+ #define USE_SERIAL Serial
  
  void hexdump(const void *mem, uint32_t len, uint8_t cols = 16) {
      const uint8_t* src = (const uint8_t*) mem;
@@ -37,12 +45,14 @@
      switch(type) {
          case WStype_DISCONNECTED:
              USE_SERIAL.printf("[WSc] Disconnected!\n");
+            wsConnected = false;
              break;
          case WStype_CONNECTED:
              USE_SERIAL.printf("[WSc] Connected to url: %s\n", payload);
  
              // send message to server when Connected
              webSocket.sendTXT("Connected");
+            wsConnected = true;
              break;
          case WStype_TEXT:
              USE_SERIAL.printf("[WSc] get text: %s\n", payload);
@@ -84,27 +94,54 @@
          delay(1000);
      }
  
-     WiFiMulti.addAP("iotroam", "AxszzcauwI");
+    wifiMulti.addAP("iotroam", "rpRhDnGd0Q");
  
      //WiFi.disconnect();
-     while(WiFiMulti.run() != WL_CONNECTED) {
+    while(wifiMulti.run() != WL_CONNECTED) {
          delay(100);
      }
  
      // server address, port and URL
-     webSocket.begin("192.168.0.123", 81, "/");
+     webSocket.begin("feib.nl", 5003, "/");
  
      // event handler
      webSocket.onEvent(webSocketEvent);
  
-     // use HTTP Basic Authorization this is optional remove if not needed
-     // webSocket.setAuthorization("user", "Password");
- 
+     
      // try ever 5000 again if connection has failed
      webSocket.setReconnectInterval(5000);
- 
+
+	// Initialize I2C and accelerometer
+	Wire.begin();
+	Wire.setClock(1000000);
+	if (accel.begin() == false) {
+		USE_SERIAL.println("[LIS2DH12] Accelerometer not detected. Check wiring.");
+	} else {
+		accel.setMode(LIS2DH12_HR_12bit);
+		accel.setDataRate(LIS2DH12_ODR_100Hz);
+		USE_SERIAL.println("[LIS2DH12] Initialized.");
+	}
  }
  
  void loop() {
-     webSocket.loop();
+	webSocket.loop();
+
+	// Periodically read accelerometer and send over websocket
+	unsigned long nowMs = millis();
+	if (nowMs - lastAccelSendMs >= accelSendIntervalMs) {
+		lastAccelSendMs = nowMs;
+		if (accel.available()) {
+			float ax = accel.getX() / 980.0f; // convert mg to g
+			float ay = accel.getY() / 980.0f;
+			float az = accel.getZ() / 980.0f;
+
+			if (wsConnected) {
+				String msg = String("{\"ax\":") + String(ax, 3) +
+					String(",\"ay\":") + String(ay, 3) +
+					String(",\"az\":") + String(az, 3) + String("}");
+				webSocket.sendTXT(msg);
+			}
+		}
+	}
  }
+ 
