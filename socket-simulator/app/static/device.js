@@ -1,4 +1,4 @@
-/* globals constrain, map, push, pop, translate, rotateX, rotateY, rotateZ, noFill, stroke, box, strokeWeight, line */
+/* globals constrain, map, push, pop, translate, rotateX, rotateY, rotateZ, noFill, stroke, box, strokeWeight, line, createVector */
 
 function toHexByte(n) { return constrain(n, 0, 255).toString(16).padStart(2, '0'); }
 function toHexWord(n) { return constrain(n, 0, 65535).toString(16).padStart(4, '0'); }
@@ -6,12 +6,13 @@ function toHexWord(n) { return constrain(n, 0, 65535).toString(16).padStart(4, '
 class Device {
   constructor(id, x, z, color, vx, vz) {
     this.id = id;
-    this.pos = { x, z };
-		this.orientation = { rotZ: 0, rotX: 0, rotY: 0 };
-		this.angularVelocity = { rotZ: 0, rotX: 0, rotY: 0 };
+    this.pos = createVector(x, 0, z);
+		// Use p5.Vector: x->rotX, y->rotY, z->rotZ
+		this.orientation = createVector(0, 0, 0);
+		this.angularVelocity = createVector(0, 0, 0);
 		this.color = color;
 		this.ws = null;
-    this.vel = { x: vx, z: vz };
+    this.vel = createVector(vx, 0, vz);
 	}
 
 	connect(wsUrl) {
@@ -26,42 +27,34 @@ class Device {
   update(dtSeconds) {
     const mode = window.cfg.sim.rotationMode;
     if (mode === 'random') {
-      this.angularVelocity.rotZ += (Math.random() - 0.5) * 0.2;
-      this.angularVelocity.rotX += (Math.random() - 0.5) * 0.2;
-      this.angularVelocity.rotY += (Math.random() - 0.5) * 0.2;
-      this.angularVelocity.rotZ *= 0.98;
-      this.angularVelocity.rotX *= 0.98;
-      this.angularVelocity.rotY *= 0.98;
+      this.angularVelocity.add((Math.random() - 0.5) * 0.2, (Math.random() - 0.5) * 0.2, (Math.random() - 0.5) * 0.2);
+      this.angularVelocity.mult(0.98);
     } else if (mode === 'constant') {
       // maintain current angular velocity (no random walk or damping)
       // if zero, seed with small constant values so it visibly rotates
-      if (this.angularVelocity.rotZ === 0 && this.angularVelocity.rotX === 0 && this.angularVelocity.rotY === 0) {
-        this.angularVelocity.rotZ = 0.5;
-        this.angularVelocity.rotX = 0.3;
-        this.angularVelocity.rotY = 0.2;
+      if (this.angularVelocity.x === 0 && this.angularVelocity.y === 0 && this.angularVelocity.z === 0) {
+        this.angularVelocity.set(0.3, 0.2, 0.5); // x=rotX, y=rotY, z=rotZ
       }
     } else if (mode === 'off') {
-      this.angularVelocity.rotZ = 0;
-      this.angularVelocity.rotX = 0;
-      this.angularVelocity.rotY = 0;
+      this.angularVelocity.set(0, 0, 0);
     }
     // clamp by cfg.sim.angularMax
     const maxRZ = window.cfg.sim.angularMax.rotZ;
     const maxRX = window.cfg.sim.angularMax.rotX;
     const maxRY = window.cfg.sim.angularMax.rotY;
-    this.angularVelocity.rotZ = constrain(this.angularVelocity.rotZ, -maxRZ, maxRZ);
-    this.angularVelocity.rotX = constrain(this.angularVelocity.rotX, -maxRX, maxRX);
-    this.angularVelocity.rotY = constrain(this.angularVelocity.rotY, -maxRY, maxRY);
-    this.orientation.rotZ += this.angularVelocity.rotZ * dtSeconds;
-    this.orientation.rotX += this.angularVelocity.rotX * dtSeconds;
-    this.orientation.rotY += this.angularVelocity.rotY * dtSeconds;
+    this.angularVelocity.set(
+      constrain(this.angularVelocity.x, -maxRX, maxRX),
+      constrain(this.angularVelocity.y, -maxRY, maxRY),
+      constrain(this.angularVelocity.z, -maxRZ, maxRZ)
+    );
+    this.orientation.add(this.angularVelocity.copy().mult(dtSeconds));
 	}
 
 	getAccelerometer() {
 		const g = 1.0;
-		const axG = 2 * g * Math.sin(this.orientation.rotX);
-		const ayG = 2 * g * Math.sin(this.orientation.rotZ);
-		const azG = 2 * g * Math.cos(this.orientation.rotX) * Math.cos(this.orientation.rotZ);
+		const axG = 2 * g * Math.sin(this.orientation.x);
+		const ayG = 2 * g * Math.sin(this.orientation.z);
+		const azG = 2 * g * Math.cos(this.orientation.x) * Math.cos(this.orientation.z);
 		const ax = Math.round(map(axG, -2, 2, 0, 255));
 		const ay = Math.round(map(ayG, -2, 2, 0, 255));
 		const az = Math.round(map(azG, -2, 2, 0, 255));
@@ -72,14 +65,14 @@ class Device {
     const halfW = world.gridWidth / 2;
     const halfH = world.gridHeight / 2; // using z as vertical in plane
     const beacons = [
-      { x: -halfW, z: -halfH }, // top-left
-      { x: halfW, z: -halfH },  // top-right
-      { x: halfW, z: halfH },   // bottom-right
-      { x: -halfW, z: halfH },  // bottom-left
+      createVector(-halfW, 0, -halfH), // top-left
+      createVector( halfW, 0, -halfH), // top-right
+      createVector( halfW, 0,  halfH), // bottom-right
+      createVector(-halfW, 0,  halfH), // bottom-left
     ];
     const maxDist = Math.hypot(halfW, halfH);
     const vals = beacons.map(b => {
-      const d = Math.hypot(this.pos.x - b.x, this.pos.z - b.z);
+      const d = p5.Vector.dist(this.pos, b);
       return constrain(Math.round(map(d, 0, maxDist, 255, 0)), 0, 255);
     });
     return { dTL: vals[0], dTR: vals[1], dBR: vals[2], dBL: vals[3] };
@@ -92,9 +85,9 @@ class Device {
       const maxRX = Math.max(1e-6, window.cfg.sim.angularMax.rotX);
       const maxRZ = Math.max(1e-6, window.cfg.sim.angularMax.rotZ);
       const maxRY = Math.max(1e-6, window.cfg.sim.angularMax.rotY);
-      ax = Math.round(map(constrain(this.angularVelocity.rotX, -maxRX, maxRX), -maxRX, maxRX, 0, 255));
-      ay = Math.round(map(constrain(this.angularVelocity.rotZ, -maxRZ, maxRZ), -maxRZ, maxRZ, 0, 255));
-      az = Math.round(map(constrain(this.angularVelocity.rotY, -maxRY, maxRY), -maxRY, maxRY, 0, 255));
+      ax = Math.round(map(constrain(this.angularVelocity.x, -maxRX, maxRX), -maxRX, maxRX, 0, 255));
+      ay = Math.round(map(constrain(this.angularVelocity.z, -maxRZ, maxRZ), -maxRZ, maxRZ, 0, 255));
+      az = Math.round(map(constrain(this.angularVelocity.y, -maxRY, maxRY), -maxRY, maxRY, 0, 255));
     } else {
       const acc = this.getAccelerometer();
       ax = acc.ax; ay = acc.ay; az = acc.az;
@@ -115,9 +108,9 @@ class Device {
     translate(this.pos.x, -cfg.device.heightY/2, this.pos.z);
     rotateX(-Math.PI/2); // align cube orientation for X-Z plane view
     // apply simulated orientation so rotation is visible (Z, X, Y)
-    rotateZ(this.orientation.rotZ);
-    rotateX(this.orientation.rotX);
-    rotateY(this.orientation.rotY);
+    rotateZ(this.orientation.z);
+    rotateX(this.orientation.x);
+    rotateY(this.orientation.y);
 		noFill();
 		stroke(this.color[0], this.color[1], this.color[2]);
 		box(cfg.device.cubeSize, cfg.device.cubeSize, cfg.device.cubeSize);
@@ -129,8 +122,7 @@ class Device {
 	}
 
   tickPhysics(dt, world) {
-    this.pos.x += this.vel.x * dt;
-    this.pos.z += this.vel.z * dt;
+    this.pos.add(this.vel.copy().mult(dt));
     const halfW = world.gridWidth / 2;
     const halfH = world.gridHeight / 2;
     // bounce on X

@@ -1,4 +1,4 @@
-/* globals createCanvas, WEBGL, orbitControl, background, stroke, noFill, fill, line, push, pop, translate, sphere, camera */
+/* globals createCanvas, WEBGL, orbitControl, background, stroke, noFill, fill, line, push, pop, translate, sphere, camera, createVector */
 
 let devices = [];
 let running = false;
@@ -55,11 +55,11 @@ function createDevices(n) {
 		const id = Math.floor(rand() * 65536);
 		const x = randRange(-halfW, halfW);
 		const z = randRange(-halfH, halfH);
-		const dir = randRange(0, Math.PI * 2);
-		const speedX = randRange(window.cfg.world.minSpeedX, window.cfg.world.maxSpeedX);
-		const speedZ = randRange(window.cfg.world.minSpeedZ, window.cfg.world.maxSpeedZ);
-		const vx = Math.cos(dir) * speedX;
-		const vz = Math.sin(dir) * speedZ;
+    const dir = randRange(0, Math.PI * 2);
+    const speedX = randRange(window.cfg.world.minSpeedX, window.cfg.world.maxSpeedX);
+    const speedZ = randRange(window.cfg.world.minSpeedZ, window.cfg.world.maxSpeedZ);
+    const vx = Math.cos(dir) * speedX;
+    const vz = Math.sin(dir) * speedZ;
 		const color = randomColor();
 		const d = new window.Device(id, x, z, color, vx, vz);
 		devices.push(d);
