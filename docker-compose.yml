@@ -1,6 +1,6 @@
 version: '3.8'
 services:
-  grouploop-socket:
+  socket:
     build:
       context: ./socket-server
       dockerfile: Dockerfile
@@ -12,7 +12,7 @@ services:
       - WS_HOST=0.0.0.0
       - WS_PORT=5000
       - PYTHONUNBUFFERED=1
-  grouploop-client:
+  client:
     build:
       context: ./socket-client
       dockerfile: Dockerfile
@@ -25,6 +25,6 @@ services:
       context: ./socket-simulator
       dockerfile: Dockerfile
     ports:
-      - "5005:5005" # Flask simulator UI
+      - "5005:5000" # Flask simulator UI
     volumes:
       - ./socket-simulator:/app
