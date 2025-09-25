@@ -145,17 +145,12 @@ window.setup = function() {
 		onRotationModeChange: (mode) => {
 			window.cfg.sim.rotationMode = mode;
 		},
-		onSpeedChange: (key, val) => {
-			window.cfg.world[key] = Number(val);
-			// Optional: resample velocities within new ranges
-			devices.forEach(d => {
-				const sx = Math.sign(d.vel.x) || 1;
-				const sz = Math.sign(d.vel.z) || 1;
-				const magX = Math.min(Math.max(Math.abs(d.vel.x), window.cfg.world.minSpeedX), window.cfg.world.maxSpeedX);
-				const magZ = Math.min(Math.max(Math.abs(d.vel.z), window.cfg.world.minSpeedZ), window.cfg.world.maxSpeedZ);
-				d.vel.x = sx * magX;
-				d.vel.z = sz * magZ;
-			});
+		onFlockingChange: (key, val) => {
+			if (key === 'maxSpeed') {
+				window.cfg.world.maxSpeed = Number(val);
+			} else {
+				window.cfg.flocking[key] = Number(val);
+			}
 		},
 		onStart: startSim,
 		onStop: stopSim,
@@ -214,9 +209,9 @@ window.draw = function() {
 	translate(-window.cfg.world.gridWidth, 0, 0); sphere(window.cfg.world.beaconRadius);
 	pop();
 
-	// Update rotation, physics and draw devices
-	devices.forEach(d => d.update(dt));
-	devices.forEach(d => d.tickPhysics(dt, window.cfg.world));
+    // Update rotation, physics (with neighbors) and draw devices
+    devices.forEach(d => d.update(dt));
+    devices.forEach(d => d.tickPhysics(dt, window.cfg.world, devices));
 	devices.forEach(d => d.draw(window.cfg));
 };
 

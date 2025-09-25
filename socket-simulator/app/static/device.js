@@ -121,7 +121,62 @@ class Device {
 		pop();
 	}
 
-  tickPhysics(dt, world) {
+  tickPhysics(dt, world, neighbors) {
+    // Boids forces
+    const align = createVector(0, 0, 0);
+    const coh = createVector(0, 0, 0);
+    const sep = createVector(0, 0, 0);
+    let countA = 0, countC = 0, countS = 0;
+    const cfgF = window.cfg.flocking;
+
+    for (const other of neighbors) {
+      if (other === this) continue;
+      const d = p5.Vector.dist(this.pos, other.pos);
+      if (d < cfgF.alignmentRadius) {
+        align.add(other.vel);
+        countA++;
+      }
+      if (d < cfgF.cohesionRadius) {
+        coh.add(other.pos);
+        countC++;
+      }
+      if (d > 0 && d < cfgF.separationRadius) {
+        const away = p5.Vector.sub(this.pos, other.pos);
+        away.normalize();
+        away.div(Math.max(d, 1e-3));
+        sep.add(away);
+        countS++;
+      }
+    }
+
+    if (countA > 0) {
+      align.div(countA);
+      align.setMag(world.maxSpeed || window.cfg.world.maxSpeed);
+      align.sub(this.vel);
+      align.limit(cfgF.maxForce);
+    }
+    if (countC > 0) {
+      coh.div(countC);
+      coh.sub(this.pos);
+      coh.setMag(world.maxSpeed || window.cfg.world.maxSpeed);
+      coh.sub(this.vel);
+      coh.limit(cfgF.maxForce);
+    }
+    if (countS > 0) {
+      sep.div(countS);
+      sep.setMag(world.maxSpeed || window.cfg.world.maxSpeed);
+      sep.sub(this.vel);
+      sep.limit(cfgF.maxForce);
+    }
+
+    const acc = createVector(0, 0, 0);
+    acc.add(align.mult(cfgF.alignmentWeight));
+    acc.add(coh.mult(cfgF.cohesionWeight));
+    acc.add(sep.mult(cfgF.separationWeight));
+
+    this.vel.add(acc.mult(dt));
+    const maxSp = world.maxSpeed || window.cfg.world.maxSpeed;
+    this.vel.limit(maxSp);
     this.pos.add(this.vel.copy().mult(dt));
     const halfW = world.gridWidth / 2;
     const halfH = world.gridHeight / 2;

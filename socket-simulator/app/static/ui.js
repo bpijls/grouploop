@@ -73,31 +73,56 @@ function setupUI(cfg, handlers) {
     const yawSlider = createSlider(0, 3, cfg.sim.angularMax.rotY, 0.01).parent(yawWrap);
     yawSlider.input(() => { handlers.onAngularMaxChange('rotY', yawSlider.value()); yawVal.html(yawSlider.value().toFixed(2)); });
 
-    // Linear velocity sliders (X/Z)
-    const velHeader = createDiv('<strong>Velocity (units/s)</strong>').parent(panel).addClass('control');
-    const minXWrap = createDiv('').parent(panel).addClass('control');
-    createSpan('min vx: ').parent(minXWrap);
-    const minXVal = createSpan(String(cfg.world.minSpeedX.toFixed(0))).parent(minXWrap);
-    const minXSlider = createSlider(0, 300, cfg.world.minSpeedX, 1).parent(minXWrap);
-    minXSlider.input(() => { handlers.onSpeedChange('minSpeedX', minXSlider.value()); minXVal.html(String(minXSlider.value())); });
+    // Flocking controls
+    const flockHeader = createDiv('<strong>Flocking</strong>').parent(panel).addClass('control');
 
-    const maxXWrap = createDiv('').parent(panel).addClass('control');
-    createSpan('max vx: ').parent(maxXWrap);
-    const maxXVal = createSpan(String(cfg.world.maxSpeedX.toFixed(0))).parent(maxXWrap);
-    const maxXSlider = createSlider(0, 300, cfg.world.maxSpeedX, 1).parent(maxXWrap);
-    maxXSlider.input(() => { handlers.onSpeedChange('maxSpeedX', maxXSlider.value()); maxXVal.html(String(maxXSlider.value())); });
+    const maxSpeedWrap = createDiv('').parent(panel).addClass('control');
+    createSpan('max speed: ').parent(maxSpeedWrap);
+    const maxSpeedVal = createSpan(String(cfg.world.maxSpeed.toFixed(0))).parent(maxSpeedWrap);
+    const maxSpeedSlider = createSlider(10, 300, cfg.world.maxSpeed, 1).parent(maxSpeedWrap);
+    maxSpeedSlider.input(() => { handlers.onFlockingChange('maxSpeed', maxSpeedSlider.value()); maxSpeedVal.html(String(maxSpeedSlider.value())); });
 
-    const minZWrap = createDiv('').parent(panel).addClass('control');
-    createSpan('min vz: ').parent(minZWrap);
-    const minZVal = createSpan(String(cfg.world.minSpeedZ.toFixed(0))).parent(minZWrap);
-    const minZSlider = createSlider(0, 300, cfg.world.minSpeedZ, 1).parent(minZWrap);
-    minZSlider.input(() => { handlers.onSpeedChange('minSpeedZ', minZSlider.value()); minZVal.html(String(minZSlider.value())); });
+    const alignWrap = createDiv('').parent(panel).addClass('control');
+    createSpan('alignment: ').parent(alignWrap);
+    const alignVal = createSpan(String(cfg.flocking.alignmentWeight.toFixed(2))).parent(alignWrap);
+    const alignSlider = createSlider(0, 3, cfg.flocking.alignmentWeight, 0.01).parent(alignWrap);
+    alignSlider.input(() => { handlers.onFlockingChange('alignmentWeight', alignSlider.value()); alignVal.html(alignSlider.value().toFixed(2)); });
 
-    const maxZWrap = createDiv('').parent(panel).addClass('control');
-    createSpan('max vz: ').parent(maxZWrap);
-    const maxZVal = createSpan(String(cfg.world.maxSpeedZ.toFixed(0))).parent(maxZWrap);
-    const maxZSlider = createSlider(0, 300, cfg.world.maxSpeedZ, 1).parent(maxZWrap);
-    maxZSlider.input(() => { handlers.onSpeedChange('maxSpeedZ', maxZSlider.value()); maxZVal.html(String(maxZSlider.value())); });
+    const cohWrap = createDiv('').parent(panel).addClass('control');
+    createSpan('cohesion: ').parent(cohWrap);
+    const cohVal = createSpan(String(cfg.flocking.cohesionWeight.toFixed(2))).parent(cohWrap);
+    const cohSlider = createSlider(0, 3, cfg.flocking.cohesionWeight, 0.01).parent(cohWrap);
+    cohSlider.input(() => { handlers.onFlockingChange('cohesionWeight', cohSlider.value()); cohVal.html(cohSlider.value().toFixed(2)); });
+
+    const sepWrap = createDiv('').parent(panel).addClass('control');
+    createSpan('separation: ').parent(sepWrap);
+    const sepVal = createSpan(String(cfg.flocking.separationWeight.toFixed(2))).parent(sepWrap);
+    const sepSlider = createSlider(0, 3, cfg.flocking.separationWeight, 0.01).parent(sepWrap);
+    sepSlider.input(() => { handlers.onFlockingChange('separationWeight', sepSlider.value()); sepVal.html(sepSlider.value().toFixed(2)); });
+
+    const radA = createDiv('').parent(panel).addClass('control');
+    createSpan('align. rad.: ').parent(radA);
+    const radAVal = createSpan(String(cfg.flocking.alignmentRadius.toFixed(0))).parent(radA);
+    const radASlider = createSlider(10, 400, cfg.flocking.alignmentRadius, 1).parent(radA);
+    radASlider.input(() => { handlers.onFlockingChange('alignmentRadius', radASlider.value()); radAVal.html(String(radASlider.value())); });
+
+    const radC = createDiv('').parent(panel).addClass('control');
+    createSpan('coh. rad.: ').parent(radC);
+    const radCVal = createSpan(String(cfg.flocking.cohesionRadius.toFixed(0))).parent(radC);
+    const radCSlider = createSlider(10, 400, cfg.flocking.cohesionRadius, 1).parent(radC);
+    radCSlider.input(() => { handlers.onFlockingChange('cohesionRadius', radCSlider.value()); radCVal.html(String(radCSlider.value())); });
+
+    const radS = createDiv('').parent(panel).addClass('control');
+    createSpan('sep. rad.: ').parent(radS);
+    const radSVal = createSpan(String(cfg.flocking.separationRadius.toFixed(0))).parent(radS);
+    const radSSlider = createSlider(10, 400, cfg.flocking.separationRadius, 1).parent(radS);
+    radSSlider.input(() => { handlers.onFlockingChange('separationRadius', radSSlider.value()); radSVal.html(String(radSSlider.value())); });
+
+    const distS = createDiv('').parent(panel).addClass('control');
+    createSpan('sep. dis.: ').parent(distS);
+    const distSVal = createSpan(String(cfg.flocking.separationDistance.toFixed(0))).parent(distS);
+    const distSSlider = createSlider(5, 200, cfg.flocking.separationDistance, 1).parent(distS);
+    distSSlider.input(() => { handlers.onFlockingChange('separationDistance', distSSlider.value()); distSVal.html(String(distSSlider.value())); });
 }
 
 window.setupUI = setupUI;

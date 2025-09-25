@@ -28,10 +28,17 @@ window.cfg = {
 		gridHeight: 600,
 		gridStep: 50,
 		beaconRadius: 10,
-		minSpeedX: 40,
-		minSpeedZ: 40,
-		maxSpeedX: 120,
-		maxSpeedZ: 120,
+		maxSpeed: 120,
+	},
+	flocking: {
+		alignmentWeight: 0.8,
+		cohesionWeight: 0.6,
+		separationWeight: 1.2,
+		alignmentRadius: 160,
+		cohesionRadius: 160,
+		separationRadius: 80,
+		separationDistance: 40,
+		maxForce: 80
 	},
 	colors: {
 		bg: 10
