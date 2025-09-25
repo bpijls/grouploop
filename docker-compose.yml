@@ -20,3 +20,11 @@ services:
       - "5004:5000" # Flask client UI
     volumes:
       - ./socket-client:/app
+  simulator:
+    build:
+      context: ./socket-simulator
+      dockerfile: Dockerfile
+    ports:
+      - "5005:5005" # Flask simulator UI
+    volumes:
+      - ./socket-simulator:/app

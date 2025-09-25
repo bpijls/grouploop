@@ -57,28 +57,17 @@ async def handle_websocket_connection(websocket: WebSocketServerProtocol) -> Non
                 subscribers.add(websocket)
                 await websocket.send("stream:on")
             else:
-                # Try to parse accelerometer JSON {"ax":..., "ay":..., "az":...}
-                handled = False
+                # Only accept hex frames; ignore anything else
                 try:
-                    data = json.loads(message)
-                    if isinstance(data, dict):
-                        if "id" in data and isinstance(data["id"], str) and data["id"].strip():
-                            client_labels[websocket] = data["id"].strip()
-                            data = {k: v for k, v in data.items() if k != "id"}
-
-                        if all(k in data for k in ("ax", "ay", "az")):
-                            outgoing = {
-                                "device": client_labels.get(websocket, default_label(websocket)),
-                                **data,
-                            }
-                            await broadcast_to_subscribers(json.dumps(outgoing))
-                            handled = True
-                except (json.JSONDecodeError, TypeError, ValueError):
+                    text = str(message).strip()
+                    if text:
+                        parts = [p for p in text.splitlines() if p]
+                        for p in parts:
+                            hp = p.strip()
+                            if len(hp) == 18 and all(c in '0123456789abcdefABCDEF' for c in hp):
+                                await broadcast_to_subscribers(hp.lower() + "\n")
+                except Exception:
                     pass
-
-                if not handled:
-                    # Echo original message to maintain existing behavior
-                    await websocket.send(message)
     except websockets.ConnectionClosedOK:
         pass
     except websockets.ConnectionClosedError:
