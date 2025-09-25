@@ -6,16 +6,6 @@ function setupUI(cfg, handlers) {
 	// Replace HTML controls with p5-created elements, mounted into panel
 	panel.innerHTML = '<h1>Simulator</h1>';
 
-    // WebSocket URL control
-    const urlWrap = createDiv('').parent(panel).addClass('control');
-    createSpan('WS URL: ').parent(urlWrap);
-    const urlInput = createInput(cfg.websocketUrl).parent(urlWrap);
-    const urlBtn = createButton('Apply').parent(urlWrap);
-    urlBtn.mousePressed(() => {
-        const val = urlInput.value();
-        if (val && typeof val === 'string') handlers.onWsUrlChange(val.trim());
-    });
-
 	const devWrap = createDiv('').parent(panel).addClass('control');
 	createSpan('Devices: ').parent(devWrap);
 	const devValue = createSpan(String(cfg.sim.defaultDevices)).parent(devWrap);
@@ -34,12 +24,27 @@ function setupUI(cfg, handlers) {
 		rateValue.html(String(rateSlider.value()));
 	});
 
-	const row = createDiv('').parent(panel).addClass('control row');
-	const startBtn = createButton('Start').parent(row);
-	const stopBtn = createButton('Stop').parent(row);
-	stopBtn.attribute('disabled', '');
-	startBtn.mousePressed(() => { handlers.onStart(); startBtn.attribute('disabled', ''); stopBtn.removeAttribute('disabled'); });
-	stopBtn.mousePressed(() => { handlers.onStop(); stopBtn.attribute('disabled', ''); startBtn.removeAttribute('disabled'); });
+    const row = createDiv('').parent(panel).addClass('control row');
+    // WebSocket URL + Start/Stop toggle
+    createSpan('WS URL: ').parent(row);
+    const urlInput = createInput(cfg.websocketUrl).parent(row);
+    const toggleBtn = createButton('Start').parent(row);
+    let running = false;
+    toggleBtn.mousePressed(() => {
+        if (!running) {
+            const val = urlInput.value();
+            if (val && typeof val === 'string') handlers.onWsUrlChange(val.trim());
+            handlers.onStart();
+            urlInput.attribute('disabled', '');
+            toggleBtn.html('Stop');
+            running = true;
+        } else {
+            handlers.onStop();
+            urlInput.removeAttribute('disabled');
+            toggleBtn.html('Start');
+            running = false;
+        }
+    });
 
 	const status = createDiv('').parent(panel).addClass('status');
 	status.html(`WS endpoint: <code>${cfg.websocketUrl}</code> · Active sockets: <span id="socketCount">0</span>`);
