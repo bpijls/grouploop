@@ -6,6 +6,8 @@ let targetHz = window.cfg.sim.defaultHz;
 let deviceCount = window.cfg.sim.defaultDevices;
 let lastTime = 0;
 let sendTimer = null;
+let canvasElt = null;
+let isPointerDownOnCanvas = false;
 
 // Deterministic PRNG (xorshift32)
 let prngState = window.cfg.sim.seed >>> 0;
@@ -109,10 +111,25 @@ function stopSim() {
 window.setup = function() {
 	const c = createCanvas(window.cfg.canvas.width, window.cfg.canvas.height, WEBGL);
 	c.parent(document.querySelector('.canvas-wrap'));
+    canvasElt = c.elt;
+    // Track pointer state only on canvas to gate orbit control
+    canvasElt.addEventListener('pointerdown', () => { isPointerDownOnCanvas = true; });
+    canvasElt.addEventListener('pointerup', () => { isPointerDownOnCanvas = false; });
+    canvasElt.addEventListener('pointerleave', () => { isPointerDownOnCanvas = false; });
 	createDevices(deviceCount);
 	setInitialCamera();
 
 	window.setupUI(window.cfg, {
+		onWsUrlChange: (url) => {
+			window.cfg.websocketUrl = url;
+			// Reconnect all if running
+			if (running) {
+				disconnectAll();
+				connectAll();
+			}
+			const el = document.getElementById('socketCount');
+			if (el) el.textContent = '0';
+		},
 		onDeviceCountChange: (val) => {
 			deviceCount = val;
 			createDevices(deviceCount);
@@ -146,7 +163,9 @@ window.setup = function() {
 };
 
 window.draw = function() {
-	orbitControl(2, 2, 0.1);
+    if (isPointerDownOnCanvas) {
+        orbitControl(2, 2, 0.1);
+    }
 	background(window.cfg.colors.bg);
 
 	const now = performance.now();
@@ -155,6 +174,7 @@ window.draw = function() {
 
 	// World axes at origin (X:red, Y:green, Z:blue)
 	push();
+    strokeWeight(3);
 	stroke(255, 64, 64); // X
 	line(0, 0, 0, 200, 0, 0);
 	stroke(64, 255, 64); // Y

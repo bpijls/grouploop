@@ -7,8 +7,8 @@ class Device {
   constructor(id, x, z, color, vx, vz) {
     this.id = id;
     this.pos = { x, z };
-		this.orientation = { roll: 0, pitch: 0, yaw: 0 };
-		this.angularVelocity = { roll: 0, pitch: 0, yaw: 0 };
+		this.orientation = { rotZ: 0, rotX: 0, rotY: 0 };
+		this.angularVelocity = { rotZ: 0, rotX: 0, rotY: 0 };
 		this.color = color;
 		this.ws = null;
     this.vel = { x: vx, z: vz };
@@ -26,42 +26,42 @@ class Device {
   update(dtSeconds) {
     const mode = window.cfg.sim.rotationMode;
     if (mode === 'random') {
-      this.angularVelocity.roll += (Math.random() - 0.5) * 0.2;
-      this.angularVelocity.pitch += (Math.random() - 0.5) * 0.2;
-      this.angularVelocity.yaw += (Math.random() - 0.5) * 0.2;
-      this.angularVelocity.roll *= 0.98;
-      this.angularVelocity.pitch *= 0.98;
-      this.angularVelocity.yaw *= 0.98;
+      this.angularVelocity.rotZ += (Math.random() - 0.5) * 0.2;
+      this.angularVelocity.rotX += (Math.random() - 0.5) * 0.2;
+      this.angularVelocity.rotY += (Math.random() - 0.5) * 0.2;
+      this.angularVelocity.rotZ *= 0.98;
+      this.angularVelocity.rotX *= 0.98;
+      this.angularVelocity.rotY *= 0.98;
     } else if (mode === 'constant') {
       // maintain current angular velocity (no random walk or damping)
       // if zero, seed with small constant values so it visibly rotates
-      if (this.angularVelocity.roll === 0 && this.angularVelocity.pitch === 0 && this.angularVelocity.yaw === 0) {
-        this.angularVelocity.roll = 0.5;
-        this.angularVelocity.pitch = 0.3;
-        this.angularVelocity.yaw = 0.2;
+      if (this.angularVelocity.rotZ === 0 && this.angularVelocity.rotX === 0 && this.angularVelocity.rotY === 0) {
+        this.angularVelocity.rotZ = 0.5;
+        this.angularVelocity.rotX = 0.3;
+        this.angularVelocity.rotY = 0.2;
       }
     } else if (mode === 'off') {
-      this.angularVelocity.roll = 0;
-      this.angularVelocity.pitch = 0;
-      this.angularVelocity.yaw = 0;
+      this.angularVelocity.rotZ = 0;
+      this.angularVelocity.rotX = 0;
+      this.angularVelocity.rotY = 0;
     }
     // clamp by cfg.sim.angularMax
-    const maxR = window.cfg.sim.angularMax.roll;
-    const maxP = window.cfg.sim.angularMax.pitch;
-    const maxY = window.cfg.sim.angularMax.yaw;
-    this.angularVelocity.roll = constrain(this.angularVelocity.roll, -maxR, maxR);
-    this.angularVelocity.pitch = constrain(this.angularVelocity.pitch, -maxP, maxP);
-    this.angularVelocity.yaw = constrain(this.angularVelocity.yaw, -maxY, maxY);
-    this.orientation.roll += this.angularVelocity.roll * dtSeconds;
-    this.orientation.pitch += this.angularVelocity.pitch * dtSeconds;
-    this.orientation.yaw += this.angularVelocity.yaw * dtSeconds;
+    const maxRZ = window.cfg.sim.angularMax.rotZ;
+    const maxRX = window.cfg.sim.angularMax.rotX;
+    const maxRY = window.cfg.sim.angularMax.rotY;
+    this.angularVelocity.rotZ = constrain(this.angularVelocity.rotZ, -maxRZ, maxRZ);
+    this.angularVelocity.rotX = constrain(this.angularVelocity.rotX, -maxRX, maxRX);
+    this.angularVelocity.rotY = constrain(this.angularVelocity.rotY, -maxRY, maxRY);
+    this.orientation.rotZ += this.angularVelocity.rotZ * dtSeconds;
+    this.orientation.rotX += this.angularVelocity.rotX * dtSeconds;
+    this.orientation.rotY += this.angularVelocity.rotY * dtSeconds;
 	}
 
 	getAccelerometer() {
 		const g = 1.0;
-		const axG = 2 * g * Math.sin(this.orientation.pitch);
-		const ayG = 2 * g * Math.sin(this.orientation.roll);
-		const azG = 2 * g * Math.cos(this.orientation.pitch) * Math.cos(this.orientation.roll);
+		const axG = 2 * g * Math.sin(this.orientation.rotX);
+		const ayG = 2 * g * Math.sin(this.orientation.rotZ);
+		const azG = 2 * g * Math.cos(this.orientation.rotX) * Math.cos(this.orientation.rotZ);
 		const ax = Math.round(map(axG, -2, 2, 0, 255));
 		const ay = Math.round(map(ayG, -2, 2, 0, 255));
 		const az = Math.round(map(azG, -2, 2, 0, 255));
@@ -89,12 +89,12 @@ class Device {
     let ax, ay, az;
     if (window.cfg.sim.rotationMode === 'constant') {
       // Map angular velocity components to bytes
-      const maxR = Math.max(1e-6, window.cfg.sim.angularMax.roll);
-      const maxP = Math.max(1e-6, window.cfg.sim.angularMax.pitch);
-      const maxY = Math.max(1e-6, window.cfg.sim.angularMax.yaw);
-      ax = Math.round(map(constrain(this.angularVelocity.pitch, -maxP, maxP), -maxP, maxP, 0, 255));
-      ay = Math.round(map(constrain(this.angularVelocity.roll, -maxR, maxR), -maxR, maxR, 0, 255));
-      az = Math.round(map(constrain(this.angularVelocity.yaw, -maxY, maxY), -maxY, maxY, 0, 255));
+      const maxRX = Math.max(1e-6, window.cfg.sim.angularMax.rotX);
+      const maxRZ = Math.max(1e-6, window.cfg.sim.angularMax.rotZ);
+      const maxRY = Math.max(1e-6, window.cfg.sim.angularMax.rotY);
+      ax = Math.round(map(constrain(this.angularVelocity.rotX, -maxRX, maxRX), -maxRX, maxRX, 0, 255));
+      ay = Math.round(map(constrain(this.angularVelocity.rotZ, -maxRZ, maxRZ), -maxRZ, maxRZ, 0, 255));
+      az = Math.round(map(constrain(this.angularVelocity.rotY, -maxRY, maxRY), -maxRY, maxRY, 0, 255));
     } else {
       const acc = this.getAccelerometer();
       ax = acc.ax; ay = acc.ay; az = acc.az;
@@ -114,10 +114,10 @@ class Device {
 		push();
     translate(this.pos.x, -cfg.device.heightY/2, this.pos.z);
     rotateX(-Math.PI/2); // align cube orientation for X-Z plane view
-    // apply simulated orientation so rotation is visible
-    rotateX(this.orientation.pitch);
-    rotateY(this.orientation.yaw);
-    rotateZ(this.orientation.roll);
+    // apply simulated orientation so rotation is visible (Z, X, Y)
+    rotateZ(this.orientation.rotZ);
+    rotateX(this.orientation.rotX);
+    rotateY(this.orientation.rotY);
 		noFill();
 		stroke(this.color[0], this.color[1], this.color[2]);
 		box(cfg.device.cubeSize, cfg.device.cubeSize, cfg.device.cubeSize);

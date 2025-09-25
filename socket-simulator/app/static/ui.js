@@ -6,6 +6,16 @@ function setupUI(cfg, handlers) {
 	// Replace HTML controls with p5-created elements, mounted into panel
 	panel.innerHTML = '<h1>Simulator</h1>';
 
+    // WebSocket URL control
+    const urlWrap = createDiv('').parent(panel).addClass('control');
+    createSpan('WS URL: ').parent(urlWrap);
+    const urlInput = createInput(cfg.websocketUrl).parent(urlWrap);
+    const urlBtn = createButton('Apply').parent(urlWrap);
+    urlBtn.mousePressed(() => {
+        const val = urlInput.value();
+        if (val && typeof val === 'string') handlers.onWsUrlChange(val.trim());
+    });
+
 	const devWrap = createDiv('').parent(panel).addClass('control');
 	createSpan('Devices: ').parent(devWrap);
 	const devValue = createSpan(String(cfg.sim.defaultDevices)).parent(devWrap);
@@ -46,22 +56,22 @@ function setupUI(cfg, handlers) {
     modeSelect.selected(cfg.sim.rotationMode);
     modeSelect.changed(() => { handlers.onRotationModeChange(modeSelect.value()); });
     const rollWrap = createDiv('').parent(panel).addClass('control');
-    createSpan('roll: ').parent(rollWrap);
-    const rollVal = createSpan(String(cfg.sim.angularMax.roll.toFixed(2))).parent(rollWrap);
-    const rollSlider = createSlider(0, 3, cfg.sim.angularMax.roll, 0.01).parent(rollWrap);
-    rollSlider.input(() => { handlers.onAngularMaxChange('roll', rollSlider.value()); rollVal.html(rollSlider.value().toFixed(2)); });
+    createSpan('rotZ: ').parent(rollWrap);
+    const rollVal = createSpan(String(cfg.sim.angularMax.rotZ.toFixed(2))).parent(rollWrap);
+    const rollSlider = createSlider(0, 3, cfg.sim.angularMax.rotZ, 0.01).parent(rollWrap);
+    rollSlider.input(() => { handlers.onAngularMaxChange('rotZ', rollSlider.value()); rollVal.html(rollSlider.value().toFixed(2)); });
 
     const pitchWrap = createDiv('').parent(panel).addClass('control');
-    createSpan('pitch: ').parent(pitchWrap);
-    const pitchVal = createSpan(String(cfg.sim.angularMax.pitch.toFixed(2))).parent(pitchWrap);
-    const pitchSlider = createSlider(0, 3, cfg.sim.angularMax.pitch, 0.01).parent(pitchWrap);
-    pitchSlider.input(() => { handlers.onAngularMaxChange('pitch', pitchSlider.value()); pitchVal.html(pitchSlider.value().toFixed(2)); });
+    createSpan('rotX: ').parent(pitchWrap);
+    const pitchVal = createSpan(String(cfg.sim.angularMax.rotX.toFixed(2))).parent(pitchWrap);
+    const pitchSlider = createSlider(0, 3, cfg.sim.angularMax.rotX, 0.01).parent(pitchWrap);
+    pitchSlider.input(() => { handlers.onAngularMaxChange('rotX', pitchSlider.value()); pitchVal.html(pitchSlider.value().toFixed(2)); });
 
     const yawWrap = createDiv('').parent(panel).addClass('control');
-    createSpan('yaw: ').parent(yawWrap);
-    const yawVal = createSpan(String(cfg.sim.angularMax.yaw.toFixed(2))).parent(yawWrap);
-    const yawSlider = createSlider(0, 3, cfg.sim.angularMax.yaw, 0.01).parent(yawWrap);
-    yawSlider.input(() => { handlers.onAngularMaxChange('yaw', yawSlider.value()); yawVal.html(yawSlider.value().toFixed(2)); });
+    createSpan('rotY: ').parent(yawWrap);
+    const yawVal = createSpan(String(cfg.sim.angularMax.rotY.toFixed(2))).parent(yawWrap);
+    const yawSlider = createSlider(0, 3, cfg.sim.angularMax.rotY, 0.01).parent(yawWrap);
+    yawSlider.input(() => { handlers.onAngularMaxChange('rotY', yawSlider.value()); yawVal.html(yawSlider.value().toFixed(2)); });
 
     // Linear velocity sliders (X/Z)
     const velHeader = createDiv('<strong>Velocity (units/s)</strong>').parent(panel).addClass('control');

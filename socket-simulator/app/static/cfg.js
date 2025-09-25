@@ -18,9 +18,9 @@ window.cfg = {
 		seed: 1337,
 		rotationMode: 'random', // 'off' | 'constant' | 'random'
 		angularMax: {
-			roll: 1.2,
-			pitch: 1.2,
-			yaw: 1.2,
+			rotZ: 1.2,
+			rotX: 1.2,
+			rotY: 1.2,
 		},
 	},
 	world: {
