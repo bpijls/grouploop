@@ -28,7 +28,7 @@ function setInitialCamera() {
 	const cx = Math.cos(pitch) * Math.sin(yaw) * r;
 	const cy = Math.sin(pitch) * r;
 	const cz = Math.cos(pitch) * Math.cos(yaw) * r;
-	camera(cx, cy, cz, 0, 0, 0, 0, 1, 0);
+	camera(cx, cy, cz, 0, 0, 0, 0, -1, 0);
 }
 
 function randomColor() {
@@ -167,6 +167,7 @@ window.draw = function() {
 	const dt = (now - lastTime) / 1000;
 	lastTime = now;
 
+    
 	// World axes at origin (X:red, Y:green, Z:blue)
 	push();
     strokeWeight(3);
@@ -208,6 +209,7 @@ window.draw = function() {
 	fill(255, 165, 0);
 	translate(-window.cfg.world.gridWidth, 0, 0); sphere(window.cfg.world.beaconRadius);
 	pop();
+
 
     // Update rotation, physics (with neighbors) and draw devices
     devices.forEach(d => d.update(dt));
