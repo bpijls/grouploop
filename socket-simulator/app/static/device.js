@@ -23,16 +23,38 @@ class Device {
 		this.ws = null;
 	}
 
-	update(dtSeconds) {
-		this.angularVelocity.roll += (Math.random() - 0.5) * 0.2;
-		this.angularVelocity.pitch += (Math.random() - 0.5) * 0.2;
-		this.angularVelocity.yaw += (Math.random() - 0.5) * 0.2;
-		this.angularVelocity.roll *= 0.98;
-		this.angularVelocity.pitch *= 0.98;
-		this.angularVelocity.yaw *= 0.98;
-		this.orientation.roll += this.angularVelocity.roll * dtSeconds;
-		this.orientation.pitch += this.angularVelocity.pitch * dtSeconds;
-		this.orientation.yaw += this.angularVelocity.yaw * dtSeconds;
+  update(dtSeconds) {
+    const mode = window.cfg.sim.rotationMode;
+    if (mode === 'random') {
+      this.angularVelocity.roll += (Math.random() - 0.5) * 0.2;
+      this.angularVelocity.pitch += (Math.random() - 0.5) * 0.2;
+      this.angularVelocity.yaw += (Math.random() - 0.5) * 0.2;
+      this.angularVelocity.roll *= 0.98;
+      this.angularVelocity.pitch *= 0.98;
+      this.angularVelocity.yaw *= 0.98;
+    } else if (mode === 'constant') {
+      // maintain current angular velocity (no random walk or damping)
+      // if zero, seed with small constant values so it visibly rotates
+      if (this.angularVelocity.roll === 0 && this.angularVelocity.pitch === 0 && this.angularVelocity.yaw === 0) {
+        this.angularVelocity.roll = 0.5;
+        this.angularVelocity.pitch = 0.3;
+        this.angularVelocity.yaw = 0.2;
+      }
+    } else if (mode === 'off') {
+      this.angularVelocity.roll = 0;
+      this.angularVelocity.pitch = 0;
+      this.angularVelocity.yaw = 0;
+    }
+    // clamp by cfg.sim.angularMax
+    const maxR = window.cfg.sim.angularMax.roll;
+    const maxP = window.cfg.sim.angularMax.pitch;
+    const maxY = window.cfg.sim.angularMax.yaw;
+    this.angularVelocity.roll = constrain(this.angularVelocity.roll, -maxR, maxR);
+    this.angularVelocity.pitch = constrain(this.angularVelocity.pitch, -maxP, maxP);
+    this.angularVelocity.yaw = constrain(this.angularVelocity.yaw, -maxY, maxY);
+    this.orientation.roll += this.angularVelocity.roll * dtSeconds;
+    this.orientation.pitch += this.angularVelocity.pitch * dtSeconds;
+    this.orientation.yaw += this.angularVelocity.yaw * dtSeconds;
 	}
 
 	getAccelerometer() {
@@ -64,7 +86,19 @@ class Device {
   }
 
   encodeFrame(world) {
-		const { ax, ay, az } = this.getAccelerometer();
+    let ax, ay, az;
+    if (window.cfg.sim.rotationMode === 'constant') {
+      // Map angular velocity components to bytes
+      const maxR = Math.max(1e-6, window.cfg.sim.angularMax.roll);
+      const maxP = Math.max(1e-6, window.cfg.sim.angularMax.pitch);
+      const maxY = Math.max(1e-6, window.cfg.sim.angularMax.yaw);
+      ax = Math.round(map(constrain(this.angularVelocity.pitch, -maxP, maxP), -maxP, maxP, 0, 255));
+      ay = Math.round(map(constrain(this.angularVelocity.roll, -maxR, maxR), -maxR, maxR, 0, 255));
+      az = Math.round(map(constrain(this.angularVelocity.yaw, -maxY, maxY), -maxY, maxY, 0, 255));
+    } else {
+      const acc = this.getAccelerometer();
+      ax = acc.ax; ay = acc.ay; az = acc.az;
+    }
     const { dTL, dTR, dBR, dBL } = this.getBeaconDistances(world);
 		const idHex = toHexWord(this.id);
 		const frame = `${idHex}${toHexByte(ax)}${toHexByte(ay)}${toHexByte(az)}${toHexByte(dTL)}${toHexByte(dTR)}${toHexByte(dBR)}${toHexByte(dBL)}\n`;

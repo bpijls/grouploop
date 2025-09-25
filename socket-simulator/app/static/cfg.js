@@ -16,14 +16,22 @@ window.cfg = {
 		maxHz: 50,
 		defaultHz: 25,
 		seed: 1337,
+		rotationMode: 'random', // 'off' | 'constant' | 'random'
+		angularMax: {
+			roll: 1.2,
+			pitch: 1.2,
+			yaw: 1.2,
+		},
 	},
 	world: {
 		gridWidth: 800,
 		gridHeight: 600,
 		gridStep: 50,
 		beaconRadius: 10,
-		minSpeed: 40,
-		maxSpeed: 120,
+		minSpeedX: 40,
+		minSpeedZ: 40,
+		maxSpeedX: 120,
+		maxSpeedZ: 120,
 	},
 	colors: {
 		bg: 10

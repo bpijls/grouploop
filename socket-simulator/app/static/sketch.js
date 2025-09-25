@@ -1,4 +1,4 @@
-/* globals createCanvas, WEBGL, orbitControl, background, stroke, noFill, fill, line, push, pop, translate, sphere */
+/* globals createCanvas, WEBGL, orbitControl, background, stroke, noFill, fill, line, push, pop, translate, sphere, camera */
 
 let devices = [];
 let running = false;
@@ -17,6 +17,17 @@ function rand() {
 }
 function randRange(min, max) { return min + (max - min) * rand(); }
 function resetRng() { prngState = window.cfg.sim.seed >>> 0; }
+
+function setInitialCamera() {
+	// Place camera at yaw=45°, pitch=45° looking at origin
+	const yaw = Math.PI / 4;
+	const pitch = Math.PI / 4;
+	const r = Math.max(window.cfg.world.gridWidth, window.cfg.world.gridHeight) * 1.2;
+	const cx = Math.cos(pitch) * Math.sin(yaw) * r;
+	const cy = Math.sin(pitch) * r;
+	const cz = Math.cos(pitch) * Math.cos(yaw) * r;
+	camera(cx, cy, cz, 0, 0, 0, 0, 1, 0);
+}
 
 function randomColor() {
 	return [
@@ -42,10 +53,11 @@ function createDevices(n) {
 		const id = Math.floor(rand() * 65536);
 		const x = randRange(-halfW, halfW);
 		const z = randRange(-halfH, halfH);
-		const speed = randRange(window.cfg.world.minSpeed, window.cfg.world.maxSpeed);
 		const dir = randRange(0, Math.PI * 2);
-		const vx = Math.cos(dir) * speed;
-		const vz = Math.sin(dir) * speed;
+		const speedX = randRange(window.cfg.world.minSpeedX, window.cfg.world.maxSpeedX);
+		const speedZ = randRange(window.cfg.world.minSpeedZ, window.cfg.world.maxSpeedZ);
+		const vx = Math.cos(dir) * speedX;
+		const vz = Math.sin(dir) * speedZ;
 		const color = randomColor();
 		const d = new window.Device(id, x, z, color, vx, vz);
 		devices.push(d);
@@ -98,6 +110,7 @@ window.setup = function() {
 	const c = createCanvas(window.cfg.canvas.width, window.cfg.canvas.height, WEBGL);
 	c.parent(document.querySelector('.canvas-wrap'));
 	createDevices(deviceCount);
+	setInitialCamera();
 
 	window.setupUI(window.cfg, {
 		onDeviceCountChange: (val) => {
@@ -108,6 +121,24 @@ window.setup = function() {
 		onRateChange: (hz) => {
 			targetHz = hz;
 			if (running) startSender();
+		},
+		onAngularMaxChange: (axis, val) => {
+			window.cfg.sim.angularMax[axis] = Number(val);
+		},
+		onRotationModeChange: (mode) => {
+			window.cfg.sim.rotationMode = mode;
+		},
+		onSpeedChange: (key, val) => {
+			window.cfg.world[key] = Number(val);
+			// Optional: resample velocities within new ranges
+			devices.forEach(d => {
+				const sx = Math.sign(d.vel.x) || 1;
+				const sz = Math.sign(d.vel.z) || 1;
+				const magX = Math.min(Math.max(Math.abs(d.vel.x), window.cfg.world.minSpeedX), window.cfg.world.maxSpeedX);
+				const magZ = Math.min(Math.max(Math.abs(d.vel.z), window.cfg.world.minSpeedZ), window.cfg.world.maxSpeedZ);
+				d.vel.x = sx * magX;
+				d.vel.z = sz * magZ;
+			});
 		},
 		onStart: startSim,
 		onStop: stopSim,
@@ -121,6 +152,16 @@ window.draw = function() {
 	const now = performance.now();
 	const dt = (now - lastTime) / 1000;
 	lastTime = now;
+
+	// World axes at origin (X:red, Y:green, Z:blue)
+	push();
+	stroke(255, 64, 64); // X
+	line(0, 0, 0, 200, 0, 0);
+	stroke(64, 255, 64); // Y
+	line(0, 0, 0, 0, 200, 0);
+	stroke(64, 128, 255); // Z
+	line(0, 0, 0, 0, 0, 200);
+	pop();
 
 	// Ground grid in X-Z plane, Y up
 	push();

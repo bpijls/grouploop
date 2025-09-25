@@ -33,6 +33,61 @@ function setupUI(cfg, handlers) {
 
 	const status = createDiv('').parent(panel).addClass('status');
 	status.html(`WS endpoint: <code>${cfg.websocketUrl}</code> · Active sockets: <span id="socketCount">0</span>`);
+
+    // Angular velocity sliders
+    const angHeader = createDiv('<strong>Angular velocity max (rad/s)</strong>').parent(panel).addClass('control');
+    // Rotation mode selector
+    const modeWrap = createDiv('').parent(panel).addClass('control');
+    createSpan('rotation: ').parent(modeWrap);
+    const modeSelect = createSelect().parent(modeWrap);
+    modeSelect.option('off', 'off');
+    modeSelect.option('constant', 'constant');
+    modeSelect.option('random', 'random');
+    modeSelect.selected(cfg.sim.rotationMode);
+    modeSelect.changed(() => { handlers.onRotationModeChange(modeSelect.value()); });
+    const rollWrap = createDiv('').parent(panel).addClass('control');
+    createSpan('roll: ').parent(rollWrap);
+    const rollVal = createSpan(String(cfg.sim.angularMax.roll.toFixed(2))).parent(rollWrap);
+    const rollSlider = createSlider(0, 3, cfg.sim.angularMax.roll, 0.01).parent(rollWrap);
+    rollSlider.input(() => { handlers.onAngularMaxChange('roll', rollSlider.value()); rollVal.html(rollSlider.value().toFixed(2)); });
+
+    const pitchWrap = createDiv('').parent(panel).addClass('control');
+    createSpan('pitch: ').parent(pitchWrap);
+    const pitchVal = createSpan(String(cfg.sim.angularMax.pitch.toFixed(2))).parent(pitchWrap);
+    const pitchSlider = createSlider(0, 3, cfg.sim.angularMax.pitch, 0.01).parent(pitchWrap);
+    pitchSlider.input(() => { handlers.onAngularMaxChange('pitch', pitchSlider.value()); pitchVal.html(pitchSlider.value().toFixed(2)); });
+
+    const yawWrap = createDiv('').parent(panel).addClass('control');
+    createSpan('yaw: ').parent(yawWrap);
+    const yawVal = createSpan(String(cfg.sim.angularMax.yaw.toFixed(2))).parent(yawWrap);
+    const yawSlider = createSlider(0, 3, cfg.sim.angularMax.yaw, 0.01).parent(yawWrap);
+    yawSlider.input(() => { handlers.onAngularMaxChange('yaw', yawSlider.value()); yawVal.html(yawSlider.value().toFixed(2)); });
+
+    // Linear velocity sliders (X/Z)
+    const velHeader = createDiv('<strong>Velocity (units/s)</strong>').parent(panel).addClass('control');
+    const minXWrap = createDiv('').parent(panel).addClass('control');
+    createSpan('min vx: ').parent(minXWrap);
+    const minXVal = createSpan(String(cfg.world.minSpeedX.toFixed(0))).parent(minXWrap);
+    const minXSlider = createSlider(0, 300, cfg.world.minSpeedX, 1).parent(minXWrap);
+    minXSlider.input(() => { handlers.onSpeedChange('minSpeedX', minXSlider.value()); minXVal.html(String(minXSlider.value())); });
+
+    const maxXWrap = createDiv('').parent(panel).addClass('control');
+    createSpan('max vx: ').parent(maxXWrap);
+    const maxXVal = createSpan(String(cfg.world.maxSpeedX.toFixed(0))).parent(maxXWrap);
+    const maxXSlider = createSlider(0, 300, cfg.world.maxSpeedX, 1).parent(maxXWrap);
+    maxXSlider.input(() => { handlers.onSpeedChange('maxSpeedX', maxXSlider.value()); maxXVal.html(String(maxXSlider.value())); });
+
+    const minZWrap = createDiv('').parent(panel).addClass('control');
+    createSpan('min vz: ').parent(minZWrap);
+    const minZVal = createSpan(String(cfg.world.minSpeedZ.toFixed(0))).parent(minZWrap);
+    const minZSlider = createSlider(0, 300, cfg.world.minSpeedZ, 1).parent(minZWrap);
+    minZSlider.input(() => { handlers.onSpeedChange('minSpeedZ', minZSlider.value()); minZVal.html(String(minZSlider.value())); });
+
+    const maxZWrap = createDiv('').parent(panel).addClass('control');
+    createSpan('max vz: ').parent(maxZWrap);
+    const maxZVal = createSpan(String(cfg.world.maxSpeedZ.toFixed(0))).parent(maxZWrap);
+    const maxZSlider = createSlider(0, 300, cfg.world.maxSpeedZ, 1).parent(maxZWrap);
+    maxZSlider.input(() => { handlers.onSpeedChange('maxSpeedZ', maxZSlider.value()); maxZVal.html(String(maxZSlider.value())); });
 }
 
 window.setupUI = setupUI;
