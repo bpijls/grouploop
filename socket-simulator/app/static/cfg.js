@@ -1,7 +1,7 @@
 // Global configuration and shared state
 window.cfg = {
 	canvas: { width: 1024, height: 768 },
-	websocketUrl: 'ws://localhost:5003',
+	websocketUrl: (typeof DEFAULT_WS_URL !== 'undefined' && DEFAULT_WS_URL) ? DEFAULT_WS_URL : 'ws://localhost:5003',
 	device: {
 		cubeSize: 40,
 		heightY: 20,

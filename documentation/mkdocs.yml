@@ -1,0 +1,8 @@
+site_name: GroupLoop Docs
+site_url: http://docs.hitloop.feib.nl/
+theme:
+  name: material
+nav:
+  - Home: index.md
+plugins:
+  - search

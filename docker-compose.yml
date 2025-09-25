@@ -20,6 +20,8 @@ services:
       - "5004:5000" # Flask client UI
     volumes:
       - ./socket-client:/app
+    environment:
+      - WS_DEFAULT_URL=ws://localhost:5003/
   simulator:
     build:
       context: ./socket-simulator
@@ -28,3 +30,13 @@ services:
       - "5005:5000" # Flask simulator UI
     volumes:
       - ./socket-simulator:/app
+    environment:
+      - WS_DEFAULT_URL=ws://localhost:5003/
+  docs:
+    build:
+      context: ./documentation
+      dockerfile: Dockerfile
+    ports:
+      - "5006:5000" # MkDocs documentation
+    volumes:
+      - ./documentation:/site
