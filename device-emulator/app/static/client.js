@@ -1,4 +1,4 @@
-/* globals createCanvas, windowWidth, windowHeight, background, fill, noStroke, circle, text, textAlign, CENTER, touchStarted, touchMoved */
+/* globals createCanvas, windowWidth, windowHeight, WEBGL, background, fill, noStroke, stroke, strokeWeight, line, box, circle, rect, text, textAlign, CENTER, touchStarted, touchMoved, resetMatrix, translate, rotateX, rotateY, rotateZ, push, pop */
 
 let ws = null;
 let wsUrl = window.DEFAULT_WS_URL;
@@ -6,7 +6,14 @@ let deviceId = Math.floor(Math.random() * 65536).toString(16).padStart(4, '0');
 
 let acc = { ax: 127, ay: 127, az: 255 }; // start with 1g on Z
 let circlePos = { x: 0, y: 0 };
-let dragging = false;
+let draggingCircle = false;
+let rotatingCube = false;
+let lastMouse = { x: 0, y: 0 };
+
+// Cube orientation (radians)
+let rotX = 0; // pitch
+let rotY = 0; // yaw
+let rotZ = 0; // roll (unused by drag, kept for completeness)
 
 function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
 function toHexByte(n) { return clamp(Math.round(n), 0, 255).toString(16).padStart(2, '0'); }
@@ -80,7 +87,7 @@ function sendFrame() {
 }
 
 window.setup = function() {
-    const c = createCanvas(windowWidth, windowHeight);
+    const c = createCanvas(windowWidth, windowHeight, WEBGL);
     c.parent(document.getElementById('canvasWrap'));
     circlePos.x = width / 2;
     circlePos.y = height / 2;
@@ -90,42 +97,95 @@ window.setup = function() {
 
 window.draw = function() {
     background(0);
-    // Draw four corner beacons: TL cyan, TR magenta, BR yellow, BL orange
+
+    // If rotating via on-screen cube, synthesize accelerometer from orientation
+    if (rotatingCube) {
+        const g = 1.0;
+        const axG = 2 * g * Math.sin(rotX);
+        const ayG = 2 * g * Math.sin(rotY);
+        const azG = 2 * g * Math.cos(rotX) * Math.cos(rotY);
+        acc.ax = clamp(Math.round(mapRange(axG, -2, 2, 0, 255)), 0, 255);
+        acc.ay = clamp(Math.round(mapRange(ayG, -2, 2, 0, 255)), 0, 255);
+        acc.az = clamp(Math.round(mapRange(azG, -2, 2, 0, 255)), 0, 255);
+    }
+
+    // Draw 3D cube with orientation axes in center (WEBGL coords)
+    push();
+    rotateZ(rotZ);
+    rotateX(rotX);
+    rotateY(rotY);
+    noFill();
+    stroke(200);
+    box(120, 120, 120);
+    strokeWeight(3);
+    stroke(255, 64, 64); line(0, 0, 0, 80, 0, 0); // X - red
+    stroke(64, 255, 64); line(0, 0, 0, 0, 80, 0); // Y - green
+    stroke(64, 128, 255); line(0, 0, 0, 0, 0, 80); // Z - blue
+    pop();
+
+    // 2D overlay for beacons, draggable circle, HUD
+    push();
+    resetMatrix();
+    translate(-width/2, -height/2);
     const sz = 24;
     noStroke();
-    // Cyan
-    fill(0, 255, 255); rect(0, 0, sz, sz);
-    // Magenta
-    fill(255, 0, 255); rect(width - sz, 0, sz, sz);
-    // Yellow
-    fill(255, 255, 0); rect(width - sz, height - sz, sz, sz);
-    // Orange
-    fill(255, 165, 0); rect(0, height - sz, sz, sz);
-    // Draw draggable circle colored by accel mapping (-1g..1g -> 0..255)
+    fill(0, 255, 255); rect(0, 0, sz, sz); // TL cyan
+    fill(255, 0, 255); rect(width - sz, 0, sz, sz); // TR magenta
+    fill(255, 255, 0); rect(width - sz, height - sz, sz, sz); // BR yellow
+    fill(255, 165, 0); rect(0, height - sz, sz, sz); // BL orange
+
     const mapAccel = (v) => clamp(Math.round(mapRange(mapRange(v, 0, 255, -2, 2), -1, 1, 0, 255)), 0, 255);
     fill(mapAccel(acc.ax), mapAccel(acc.ay), mapAccel(acc.az));
     noStroke();
     circle(circlePos.x, circlePos.y, 60);
 
-    // HUD: connection status and last frame at bottom
     fill(255);
     textAlign(CENTER);
     const status = ws ? (ws.readyState === WebSocket.OPEN ? 'connected' : (ws.readyState === WebSocket.CONNECTING ? 'connecting' : 'disconnected')) : 'disconnected';
     text(`status: ${status}  ws:${wsUrl}`, width/2, height - 24);
     text(lastFrame || '', width/2, height - 6);
+    pop();
 }
 
-function handlePointer(x, y) {
+function handleCirclePointer(x, y) {
     circlePos.x = clamp(x, 0, width);
     circlePos.y = clamp(y, 0, height);
 }
 
-window.mousePressed = function() { dragging = true; handlePointer(mouseX, mouseY); }
-window.mouseDragged = function() { if (dragging) handlePointer(mouseX, mouseY); }
-window.mouseReleased = function() { dragging = false; }
+function startInteraction(x, y) {
+    const dx = x - circlePos.x;
+    const dy = y - circlePos.y;
+    const insideCircle = (dx*dx + dy*dy) <= (30*30);
+    draggingCircle = insideCircle;
+    rotatingCube = !insideCircle;
+    lastMouse.x = x;
+    lastMouse.y = y;
+    if (draggingCircle) handleCirclePointer(x, y);
+}
 
-window.touchStarted = function(e) { dragging = true; if (e.touches && e.touches[0]) handlePointer(e.touches[0].clientX, e.touches[0].clientY); return false; }
-window.touchMoved = function(e) { if (e.touches && e.touches[0]) handlePointer(e.touches[0].clientX, e.touches[0].clientY); return false; }
-window.touchEnded = function() { dragging = false; }
+function continueInteraction(x, y) {
+    if (draggingCircle) {
+        handleCirclePointer(x, y);
+    } else if (rotatingCube) {
+        const sens = 0.01;
+        rotY += (x - lastMouse.x) * sens;
+        rotX -= (y - lastMouse.y) * sens;
+        lastMouse.x = x;
+        lastMouse.y = y;
+    }
+}
+
+function endInteraction() {
+    draggingCircle = false;
+    // keep rotatingCube true so orientation continues to define accelerometer
+}
+
+window.mousePressed = function() { startInteraction(mouseX, mouseY); }
+window.mouseDragged = function() { continueInteraction(mouseX, mouseY); }
+window.mouseReleased = function() { endInteraction(); }
+
+window.touchStarted = function(e) { if (e.touches && e.touches[0]) startInteraction(e.touches[0].clientX, e.touches[0].clientY); return false; }
+window.touchMoved = function(e) { if (e.touches && e.touches[0]) continueInteraction(e.touches[0].clientX, e.touches[0].clientY); return false; }
+window.touchEnded = function() { endInteraction(); }
 
 
