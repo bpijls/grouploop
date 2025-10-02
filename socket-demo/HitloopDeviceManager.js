@@ -72,25 +72,23 @@ class HitloopDeviceManager {
         if (!/^[0-9a-fA-F]{18}$/.test(frame)) return false;
 
         // Extract device ID from first 4 hex characters
-        const deviceIdHex = frame.substring(0, 4);
-        const deviceId = parseInt(deviceIdHex, 16);
-        if (!Number.isFinite(deviceId)) return false;
+        const deviceIdHex = frame.substring(0, 4).toLowerCase();
 
         // If device exists, update it; otherwise validate fully before creating
-        let device = this.devices.get(deviceId);
+        let device = this.devices.get(deviceIdHex);
         if (device) {
             return device.parseHexData(frame);
         }
 
         // Validate by attempting to parse with a temporary instance
-        const temp = new HitloopDevice(deviceId);
+        const temp = new HitloopDevice(deviceIdHex);
         const ok = temp.parseHexData(frame);
         if (!ok) return false;
 
         // Only now add the device
-        device = new HitloopDevice(deviceId);
+        device = new HitloopDevice(deviceIdHex);
         device.setWebSocket(this.ws);
-        this.devices.set(deviceId, device);
+        this.devices.set(deviceIdHex, device);
         // Update with the validated frame
         return device.parseHexData(frame);
     }
@@ -101,7 +99,9 @@ class HitloopDeviceManager {
      */
     addDevice(device) {
         device.setWebSocket(this.ws);
-        this.devices.set(device.id, device);
+        // Ensure id key is a 4-char hex string
+        const key = String(device.id).slice(0, 4).toLowerCase();
+        this.devices.set(key, device);
     }
 
     /**
@@ -109,7 +109,8 @@ class HitloopDeviceManager {
      * @param {number} deviceId - The ID of the device to remove
      */
     removeDevice(deviceId) {
-        this.devices.delete(deviceId);
+        const key = String(deviceId).slice(0, 4).toLowerCase();
+        this.devices.delete(key);
     }
 
     /**
@@ -118,7 +119,8 @@ class HitloopDeviceManager {
      * @returns {HitloopDevice|null} The device or null if not found
      */
     getDevice(deviceId) {
-        return this.devices.get(deviceId) || null;
+        const key = String(deviceId).slice(0, 4).toLowerCase();
+        return this.devices.get(key) || null;
     }
 
     /**
