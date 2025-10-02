@@ -18,17 +18,6 @@ function mapRange(v, inMin, inMax, outMin, outMax) {
 }
 
 function setupMotion() {
-    function handler(e) {
-        const gX = e.accelerationIncludingGravity?.x || 0;
-        const gY = e.accelerationIncludingGravity?.y || 0;
-        const gZ = e.accelerationIncludingGravity?.z || 0;
-        // Map -2g..2g => 0..255 similar to simulator fallback
-        acc.ax = clamp(Math.round(mapRange(gX, -2, 2, 0, 255)), 0, 255);
-        acc.ay = clamp(Math.round(mapRange(gY, -2, 2, 0, 255)), 0, 255);
-        acc.az = clamp(Math.round(mapRange(gZ, -2, 2, 0, 255)), 0, 255);
-    }
-    window.addEventListener('devicemotion', handler, true);
-
     // iOS permission request; auto-connect on first touch
     if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
         window.addEventListener('touchend', async () => {
@@ -81,6 +70,16 @@ window.setup = function() {
 
 window.draw = function() {
     background(0);
+    // Update accelerometer from p5 constants (approx -2g..2g typical range -> map to 0..255)
+    if (typeof accelerationX !== 'undefined') {
+        acc.ax = clamp(Math.round(mapRange(accelerationX, -2, 2, 0, 255)), 0, 255);
+    }
+    if (typeof accelerationY !== 'undefined') {
+        acc.ay = clamp(Math.round(mapRange(accelerationY, -2, 2, 0, 255)), 0, 255);
+    }
+    if (typeof accelerationZ !== 'undefined') {
+        acc.az = clamp(Math.round(mapRange(accelerationZ, -2, 2, 0, 255)), 0, 255);
+    }
     // Draw four corner beacons: TL cyan, TR magenta, BR yellow, BL orange
     const sz = 24;
     noStroke();
