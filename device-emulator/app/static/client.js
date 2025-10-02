@@ -29,30 +29,24 @@ function setupMotion() {
     }
     window.addEventListener('devicemotion', handler, true);
 
-    // iOS permission request
+    // iOS permission request; auto-connect on first touch
     if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-        const btn = document.getElementById('connectBtn');
-        btn && btn.addEventListener('click', async () => {
+        window.addEventListener('touchend', async () => {
             try { await DeviceMotionEvent.requestPermission(); } catch (_) {}
             connectWs();
-        });
+        }, { once: true });
     } else {
-        const btn = document.getElementById('connectBtn');
-        btn && btn.addEventListener('click', connectWs);
+        connectWs();
     }
 }
 
 function connectWs() {
-    const input = document.getElementById('wsUrl');
-    wsUrl = (input && input.value) || wsUrl;
     try { if (ws) ws.close(); } catch (e) {}
     ws = new WebSocket(wsUrl);
-    const status = document.getElementById('status');
-    ws.addEventListener('open', () => { status && (status.textContent = 'Connected'); ws.send('s'); });
-    ws.addEventListener('close', () => { status && (status.textContent = 'Disconnected'); });
-    ws.addEventListener('error', () => { status && (status.textContent = 'Error'); });
+    ws.addEventListener('open', () => { ws.send('s'); });
 }
 
+let lastFrame = '';
 function encodeFrame() {
     // Distances from circle to 4 screen corners mapped to 0..255 (near=255, far=0)
     const corners = [
@@ -67,7 +61,8 @@ function encodeFrame() {
         return clamp(Math.round(mapRange(d, 0, maxDist, 255, 0)), 0, 255);
     });
     const idHex = deviceId;
-    return `${idHex}${toHexByte(acc.ax)}${toHexByte(acc.ay)}${toHexByte(acc.az)}${toHexByte(ds[0])}${toHexByte(ds[1])}${toHexByte(ds[2])}${toHexByte(ds[3])}\n`.toLowerCase();
+    lastFrame = `${idHex}${toHexByte(acc.ax)}${toHexByte(acc.ay)}${toHexByte(acc.az)}${toHexByte(ds[0])}${toHexByte(ds[1])}${toHexByte(ds[2])}${toHexByte(ds[3])}`.toLowerCase();
+    return `${lastFrame}\n`;
 }
 
 function sendFrame() {
@@ -86,15 +81,29 @@ window.setup = function() {
 
 window.draw = function() {
     background(0);
+    // Draw four corner beacons: TL cyan, TR magenta, BR yellow, BL orange
+    const sz = 24;
+    noStroke();
+    // Cyan
+    fill(0, 255, 255); rect(0, 0, sz, sz);
+    // Magenta
+    fill(255, 0, 255); rect(width - sz, 0, sz, sz);
+    // Yellow
+    fill(255, 255, 0); rect(width - sz, height - sz, sz, sz);
+    // Orange
+    fill(255, 165, 0); rect(0, height - sz, sz, sz);
     // Draw draggable circle colored by accel mapping (-1g..1g -> 0..255)
     const mapAccel = (v) => clamp(Math.round(mapRange(mapRange(v, 0, 255, -2, 2), -1, 1, 0, 255)), 0, 255);
     fill(mapAccel(acc.ax), mapAccel(acc.ay), mapAccel(acc.az));
     noStroke();
     circle(circlePos.x, circlePos.y, 60);
 
+    // HUD: connection status and last frame at bottom
     fill(255);
     textAlign(CENTER);
-    text(`id:${deviceId} ws:${wsUrl}`, width/2, 20);
+    const status = ws ? (ws.readyState === WebSocket.OPEN ? 'connected' : (ws.readyState === WebSocket.CONNECTING ? 'connecting' : 'disconnected')) : 'disconnected';
+    text(`status: ${status}  ws:${wsUrl}`, width/2, height - 24);
+    text(lastFrame || '', width/2, height - 6);
 }
 
 function handlePointer(x, y) {
