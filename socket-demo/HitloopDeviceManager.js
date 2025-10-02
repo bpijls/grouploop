@@ -7,6 +7,9 @@ class HitloopDeviceManager {
         this.ws = null;
         this.websocketUrl = websocketUrl;
         this.devices = new Map(); // Key-value pairs: deviceId -> HitloopDevice
+        this.lastSeen = new Map(); // Key-value pairs: deviceId -> timestamp (ms)
+        this.pruneInterval = null;
+        this.inactiveTimeoutMs = 5000;
     }
 
     /**
@@ -33,6 +36,13 @@ class HitloopDeviceManager {
 
         this.ws.addEventListener('error', (error) => {
         });
+
+        // Start periodic pruning of inactive devices
+        if (!this.pruneInterval) {
+            this.pruneInterval = setInterval(() => {
+                this.pruneInactive();
+            }, 1000);
+        }
     }
 
     /**
@@ -42,6 +52,10 @@ class HitloopDeviceManager {
         if (this.ws) {
             this.ws.close();
             this.ws = null;
+        }
+        if (this.pruneInterval) {
+            clearInterval(this.pruneInterval);
+            this.pruneInterval = null;
         }
     }
 
@@ -77,7 +91,9 @@ class HitloopDeviceManager {
         // If device exists, update it; otherwise validate fully before creating
         let device = this.devices.get(deviceIdHex);
         if (device) {
-            return device.parseHexData(frame);
+            const ok = device.parseHexData(frame);
+            if (ok) this.lastSeen.set(deviceIdHex, Date.now());
+            return ok;
         }
 
         // Validate by attempting to parse with a temporary instance
@@ -89,6 +105,7 @@ class HitloopDeviceManager {
         device = new HitloopDevice(deviceIdHex);
         device.setWebSocket(this.ws);
         this.devices.set(deviceIdHex, device);
+        this.lastSeen.set(deviceIdHex, Date.now());
         // Update with the validated frame
         return device.parseHexData(frame);
     }
@@ -102,6 +119,7 @@ class HitloopDeviceManager {
         // Ensure id key is a 4-char hex string
         const key = String(device.id).slice(0, 4).toLowerCase();
         this.devices.set(key, device);
+        this.lastSeen.set(key, Date.now());
     }
 
     /**
@@ -111,6 +129,7 @@ class HitloopDeviceManager {
     removeDevice(deviceId) {
         const key = String(deviceId).slice(0, 4).toLowerCase();
         this.devices.delete(key);
+        this.lastSeen.delete(key);
     }
 
     /**
@@ -137,6 +156,19 @@ class HitloopDeviceManager {
      */
     getDeviceCount() {
         return this.devices.size;
+    }
+
+    /**
+     * Remove devices that have not updated within the timeout window
+     */
+    pruneInactive() {
+        const now = Date.now();
+        for (const [id, ts] of this.lastSeen.entries()) {
+            if (now - ts > this.inactiveTimeoutMs) {
+                this.devices.delete(id);
+                this.lastSeen.delete(id);
+            }
+        }
     }
 }
 
