@@ -4,6 +4,7 @@ class StateDevicesList extends GameState {
         background(220);
         const dm = this.deviceManager;
         const count = dm.getDeviceCount();
+        fill(0);
         text(`Devices: ${count}`, 10, 20);
         let y = 40;
         for (const device of dm.getAllDevices().values()) {
