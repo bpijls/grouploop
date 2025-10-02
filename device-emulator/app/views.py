@@ -2,7 +2,7 @@ from flask import Blueprint, render_template
 import os
 
 
-main_bp = Blueprint("device_sim", __name__)
+main_bp = Blueprint("device_emulator", __name__)
 
 
 @main_bp.route("/")

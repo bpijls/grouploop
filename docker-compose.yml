@@ -32,14 +32,14 @@ services:
       - ./socket-simulator:/app
     environment:
       - WS_DEFAULT_URL=ws://localhost:5003/
-  device_simulator:
+  device_emulator:
     build:
-      context: ./device-simulator
+      context: ./device-emulator
       dockerfile: Dockerfile
     ports:
-      - "5007:5000" # Flask device simulator (mobile)
+      - "5007:5000" # Flask device emulator (mobile)
     volumes:
-      - ./device-simulator:/app
+      - ./device-emulator:/app
     environment:
       - WS_DEFAULT_URL=ws://localhost:5003/
   docs:
