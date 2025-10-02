@@ -1,0 +1,113 @@
+/* globals createCanvas, windowWidth, windowHeight, background, fill, noStroke, circle, text, textAlign, CENTER, touchStarted, touchMoved */
+
+let ws = null;
+let wsUrl = window.DEFAULT_WS_URL;
+let deviceId = Math.floor(Math.random() * 65536).toString(16).padStart(4, '0');
+
+let acc = { ax: 127, ay: 127, az: 255 }; // start with 1g on Z
+let circlePos = { x: 0, y: 0 };
+let dragging = false;
+
+function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+function toHexByte(n) { return clamp(Math.round(n), 0, 255).toString(16).padStart(2, '0'); }
+function toHexWord(n) { return clamp(Math.round(n), 0, 65535).toString(16).padStart(4, '0'); }
+
+function mapRange(v, inMin, inMax, outMin, outMax) {
+    const t = (v - inMin) / (inMax - inMin);
+    return outMin + (outMax - outMin) * t;
+}
+
+function setupMotion() {
+    function handler(e) {
+        const gX = e.accelerationIncludingGravity?.x || 0;
+        const gY = e.accelerationIncludingGravity?.y || 0;
+        const gZ = e.accelerationIncludingGravity?.z || 0;
+        // Map -2g..2g => 0..255 similar to simulator fallback
+        acc.ax = clamp(Math.round(mapRange(gX, -2, 2, 0, 255)), 0, 255);
+        acc.ay = clamp(Math.round(mapRange(gY, -2, 2, 0, 255)), 0, 255);
+        acc.az = clamp(Math.round(mapRange(gZ, -2, 2, 0, 255)), 0, 255);
+    }
+    window.addEventListener('devicemotion', handler, true);
+
+    // iOS permission request
+    if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+        const btn = document.getElementById('connectBtn');
+        btn && btn.addEventListener('click', async () => {
+            try { await DeviceMotionEvent.requestPermission(); } catch (_) {}
+            connectWs();
+        });
+    } else {
+        const btn = document.getElementById('connectBtn');
+        btn && btn.addEventListener('click', connectWs);
+    }
+}
+
+function connectWs() {
+    const input = document.getElementById('wsUrl');
+    wsUrl = (input && input.value) || wsUrl;
+    try { if (ws) ws.close(); } catch (e) {}
+    ws = new WebSocket(wsUrl);
+    const status = document.getElementById('status');
+    ws.addEventListener('open', () => { status && (status.textContent = 'Connected'); ws.send('s'); });
+    ws.addEventListener('close', () => { status && (status.textContent = 'Disconnected'); });
+    ws.addEventListener('error', () => { status && (status.textContent = 'Error'); });
+}
+
+function encodeFrame() {
+    // Distances from circle to 4 screen corners mapped to 0..255 (near=255, far=0)
+    const corners = [
+        { x: 0, y: 0 }, // TL -> dNW
+        { x: width, y: 0 }, // TR -> dNE
+        { x: width, y: height }, // BR -> dSE
+        { x: 0, y: height }, // BL -> dSW
+    ];
+    const maxDist = Math.hypot(width, height);
+    const ds = corners.map(c => {
+        const d = Math.hypot(circlePos.x - c.x, circlePos.y - c.y);
+        return clamp(Math.round(mapRange(d, 0, maxDist, 255, 0)), 0, 255);
+    });
+    const idHex = deviceId;
+    return `${idHex}${toHexByte(acc.ax)}${toHexByte(acc.ay)}${toHexByte(acc.az)}${toHexByte(ds[0])}${toHexByte(ds[1])}${toHexByte(ds[2])}${toHexByte(ds[3])}\n`.toLowerCase();
+}
+
+function sendFrame() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    ws.send(encodeFrame());
+}
+
+window.setup = function() {
+    const c = createCanvas(windowWidth, windowHeight);
+    c.parent(document.getElementById('canvasWrap'));
+    circlePos.x = width / 2;
+    circlePos.y = height / 2;
+    setupMotion();
+    setInterval(sendFrame, 50); // 20 Hz
+}
+
+window.draw = function() {
+    background(0);
+    // Draw draggable circle colored by accel mapping (-1g..1g -> 0..255)
+    const mapAccel = (v) => clamp(Math.round(mapRange(mapRange(v, 0, 255, -2, 2), -1, 1, 0, 255)), 0, 255);
+    fill(mapAccel(acc.ax), mapAccel(acc.ay), mapAccel(acc.az));
+    noStroke();
+    circle(circlePos.x, circlePos.y, 60);
+
+    fill(255);
+    textAlign(CENTER);
+    text(`id:${deviceId} ws:${wsUrl}`, width/2, 20);
+}
+
+function handlePointer(x, y) {
+    circlePos.x = clamp(x, 0, width);
+    circlePos.y = clamp(y, 0, height);
+}
+
+window.mousePressed = function() { dragging = true; handlePointer(mouseX, mouseY); }
+window.mouseDragged = function() { if (dragging) handlePointer(mouseX, mouseY); }
+window.mouseReleased = function() { dragging = false; }
+
+window.touchStarted = function(e) { dragging = true; if (e.touches && e.touches[0]) handlePointer(e.touches[0].clientX, e.touches[0].clientY); return false; }
+window.touchMoved = function(e) { if (e.touches && e.touches[0]) handlePointer(e.touches[0].clientX, e.touches[0].clientY); return false; }
+window.touchEnded = function() { dragging = false; }
+
+

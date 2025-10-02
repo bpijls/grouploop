@@ -1,0 +1,7 @@
+html, body { margin: 0; padding: 0; height: 100%; background: #111; color: #fff; }
+.wrap { display: flex; flex-direction: column; height: 100%; }
+.controls { padding: 8px; background: #222; display: flex; gap: 8px; align-items: center; }
+#status { padding: 8px; font-size: 14px; }
+#canvasWrap { flex: 1; }
+canvas { display: block; width: 100% !important; height: 100% !important; touch-action: none; }
+
