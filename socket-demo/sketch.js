@@ -1,28 +1,29 @@
 // Create device manager instance
 const deviceManager = new HitloopDeviceManager('ws://feib.nl:5003');
+const gameStateManager = new GameStateManager(deviceManager);
+
+// Register example game states
+gameStateManager.addState('list', new StateDevicesList(deviceManager));
+gameStateManager.addState('first', new StateFirstDeviceDetails(deviceManager));
+gameStateManager.addState('heatmap', new StateGridHeatmap(deviceManager));
 
 function setup() {
     createCanvas(400, 400);
 
     // Connect to WebSocket server
     deviceManager.connect();
+    // Default state
+    gameStateManager.switchTo('list');
 }
 
 function draw() {
-    background(220);
+    gameStateManager.draw();
+}
 
-    // Display device information
-    const deviceCount = deviceManager.getDeviceCount();
-    text(`Devices: ${deviceCount}`, 10, 20);
-
-    // Display data from first device if available
-    if (deviceCount > 0) {
-        const devices = deviceManager.getAllDevices();
-        const firstDevice = devices.values().next().value;
-        const data = firstDevice.getSensorData();
-
-        text(`Device ID: ${data.id}`, 10, 40);
-        text(`Accel: ${data.ax}, ${data.ay}, ${data.az}`, 10, 60);
-        text(`Distances: NW:${data.dNW} NE:${data.dNE} SW:${data.dSW} SE:${data.dSE}`, 10, 80);
+function keyPressed() {
+    if (keyCode === RIGHT_ARROW) {
+        gameStateManager.nextState();
+    } else if (keyCode === LEFT_ARROW) {
+        gameStateManager.previousState();
     }
 }
