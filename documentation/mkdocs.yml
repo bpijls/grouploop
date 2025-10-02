@@ -4,5 +4,9 @@ theme:
   name: material
 nav:
   - Home: index.md
+  - Socket Demo:
+    - Overview: socket-demo/index.md
+    - Classes: socket-demo/classes.md
+    - How-to: socket-demo/howto.md
 plugins:
   - search
