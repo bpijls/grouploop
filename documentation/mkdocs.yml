@@ -10,3 +10,4 @@ nav:
     - How-to: socket-demo/howto.md
 plugins:
   - search
+  - mermaid2
