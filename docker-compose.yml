@@ -1,4 +1,8 @@
 version: '3.8'
+
+x-ws-env: &ws_env
+  - WS_DEFAULT_URL=${WS_DEFAULT_URL:-ws://localhost:5003/}
+
 services:
   socket:
     build:
@@ -20,8 +24,7 @@ services:
       - "5004:5000" # Flask client UI
     volumes:
       - ./socket-client:/app
-    environment:
-      - WS_DEFAULT_URL=ws://localhost:5003/
+    environment: *ws_env
   simulator:
     build:
       context: ./socket-simulator
@@ -30,8 +33,7 @@ services:
       - "5005:5000" # Flask simulator UI
     volumes:
       - ./socket-simulator:/app
-    environment:
-      - WS_DEFAULT_URL=ws://localhost:5003/
+    environment: *ws_env
   device_emulator:
     build:
       context: ./device-emulator
@@ -40,8 +42,7 @@ services:
       - "5007:5000" # Flask device emulator (mobile)
     volumes:
       - ./device-emulator:/app
-    environment:
-      - WS_DEFAULT_URL=ws://localhost:5003/
+    environment: *ws_env
   docs:
     build:
       context: ./documentation
