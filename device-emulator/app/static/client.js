@@ -18,6 +18,26 @@ function mapRange(v, inMin, inMax, outMin, outMax) {
 }
 
 function setupMotion() {
+    // Use DeviceMotion (accelerationIncludingGravity) in m/s^2 and convert to g
+    function handler(e) {
+        const axMs2 = (e.accelerationIncludingGravity && typeof e.accelerationIncludingGravity.x === 'number') ? e.accelerationIncludingGravity.x : null;
+        const ayMs2 = (e.accelerationIncludingGravity && typeof e.accelerationIncludingGravity.y === 'number') ? e.accelerationIncludingGravity.y : null;
+        const azMs2 = (e.accelerationIncludingGravity && typeof e.accelerationIncludingGravity.z === 'number') ? e.accelerationIncludingGravity.z : null;
+        const G = 9.80665; // m/s^2 per 1g
+        if (axMs2 !== null) {
+            const axG = axMs2 / G; // in g
+            acc.ax = clamp(Math.round(mapRange(axG, -2, 2, 0, 255)), 0, 255);
+        }
+        if (ayMs2 !== null) {
+            const ayG = ayMs2 / G;
+            acc.ay = clamp(Math.round(mapRange(ayG, -2, 2, 0, 255)), 0, 255);
+        }
+        if (azMs2 !== null) {
+            const azG = azMs2 / G;
+            acc.az = clamp(Math.round(mapRange(azG, -2, 2, 0, 255)), 0, 255);
+        }
+    }
+    window.addEventListener('devicemotion', handler, true);
     // iOS permission request; auto-connect on first touch
     if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
         window.addEventListener('touchend', async () => {
@@ -70,16 +90,6 @@ window.setup = function() {
 
 window.draw = function() {
     background(0);
-    // Update accelerometer from p5 constants (approx -2g..2g typical range -> map to 0..255)
-    if (typeof accelerationX !== 'undefined') {
-        acc.ax = clamp(Math.round(mapRange(accelerationX, -2, 2, 0, 255)), 0, 255);
-    }
-    if (typeof accelerationY !== 'undefined') {
-        acc.ay = clamp(Math.round(mapRange(accelerationY, -2, 2, 0, 255)), 0, 255);
-    }
-    if (typeof accelerationZ !== 'undefined') {
-        acc.az = clamp(Math.round(mapRange(accelerationZ, -2, 2, 0, 255)), 0, 255);
-    }
     // Draw four corner beacons: TL cyan, TR magenta, BR yellow, BL orange
     const sz = 24;
     noStroke();
