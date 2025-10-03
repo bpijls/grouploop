@@ -6,9 +6,10 @@ const gameStateManager = new GameStateManager(deviceManager);
 gameStateManager.addState('list', new StateDevicesList(deviceManager));
 gameStateManager.addState('first', new StateFirstDeviceDetails(deviceManager));
 gameStateManager.addState('heatmap', new StateGridHeatmap(deviceManager));
+gameStateManager.addState('circles', new StateDeviceCircles(deviceManager));
 
 function setup() {
-    createCanvas(400, 400);
+    createCanvas(windowWidth, windowHeight);
 
     // Connect to WebSocket server
     deviceManager.connect();
@@ -26,4 +27,8 @@ function keyPressed() {
     } else if (keyCode === LEFT_ARROW) {
         gameStateManager.previousState();
     }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
 }
