@@ -5,8 +5,8 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>Socket Simulator</title>
 	<link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-	<script src="http://cdn.hitloop.feib.nl/js/p5.min.js"></script>
-    <script src="http://cdn.hitloop.feib.nl/js/p5.sound.min.js"></script>
+	<script src="{{ cdn_base_url }}/js/p5.min.js"></script>
+    <script src="{{ cdn_base_url }}/js/p5.sound.min.js"></script>
 	<!-- <script src="https://cdn.jsdelivr.net/npm/p5@1.9.3/lib/addons/p5.dom.min.js"></script> -->
 	<script>
 		const DEFAULT_WS_URL = {{ default_ws_url|tojson }};

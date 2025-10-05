@@ -2,6 +2,8 @@ version: '3.8'
 
 x-ws-env: &ws_env
   - WS_DEFAULT_URL=${WS_DEFAULT_URL:-ws://localhost:5003/}
+x-cdn-env: &cdn_env
+  - CDN_BASE_URL=${CDN_BASE_URL:-http://localhost:5008}
 
 services:
   socket:
@@ -24,7 +26,9 @@ services:
       - "5004:5000" # Flask client UI
     volumes:
       - ./socket-client:/app
-    environment: *ws_env
+    environment:
+      <<: *ws_env
+      - CDN_BASE_URL=${CDN_BASE_URL:-http://localhost:5008}
   cdn_client:
     build:
       context: ./cdn-client
@@ -35,6 +39,7 @@ services:
       - ./cdn-client:/app
     environment:
       - PYTHONUNBUFFERED=1
+      - CDN_BASE_URL=${CDN_BASE_URL:-http://localhost:5008}
   simulator:
     build:
       context: ./socket-simulator
@@ -43,7 +48,9 @@ services:
       - "5005:5000" # Flask simulator UI
     volumes:
       - ./socket-simulator:/app
-    environment: *ws_env
+    environment:
+      <<: *ws_env
+      - CDN_BASE_URL=${CDN_BASE_URL:-http://localhost:5008}
   device_emulator:
     build:
       context: ./device-emulator
@@ -52,7 +59,9 @@ services:
       - "5007:5000" # Flask device emulator (mobile)
     volumes:
       - ./device-emulator:/app
-    environment: *ws_env
+    environment:
+      <<: *ws_env
+      - CDN_BASE_URL=${CDN_BASE_URL:-http://localhost:5008}
   docs:
     build:
       context: ./documentation
