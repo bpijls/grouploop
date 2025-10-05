@@ -79,6 +79,7 @@ async def handle_client_command(ws: WebSocketServerProtocol, line: str) -> None:
         # List all known devices, one per line, end with extra newline
         ids = sorted(device_clients.keys())
         payload = ("\n".join(ids) + "\n") if ids else "\n"
+        print(f"Listing devices: {payload}")
         await safe_send(ws, payload)
         return
     if cmd == 'I' and len(line) == 1:
