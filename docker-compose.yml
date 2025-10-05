@@ -1,9 +1,9 @@
 version: '3.8'
 
 x-ws-env: &ws_env
-  - WS_DEFAULT_URL=${WS_DEFAULT_URL:-ws://localhost:5003/}
+  WS_DEFAULT_URL: ${WS_DEFAULT_URL:-ws://feib.nl:5003}
 x-cdn-env: &cdn_env
-  - CDN_BASE_URL=${CDN_BASE_URL:-http://localhost:5008}
+  CDN_BASE_URL: ${CDN_BASE_URL:-http://cdn.hitloop.feib.nl}
 
 services:
   socket:
@@ -27,8 +27,7 @@ services:
     volumes:
       - ./socket-client:/app
     environment:
-      <<: *ws_env
-      - CDN_BASE_URL=${CDN_BASE_URL:-http://localhost:5008}
+      <<: [*ws_env, *cdn_env]
   cdn_client:
     build:
       context: ./cdn-client
@@ -38,8 +37,8 @@ services:
     volumes:
       - ./cdn-client:/app
     environment:
-      - PYTHONUNBUFFERED=1
-      - CDN_BASE_URL=${CDN_BASE_URL:-http://localhost:5008}
+      PYTHONUNBUFFERED: 1
+      <<: *cdn_env
   simulator:
     build:
       context: ./socket-simulator
@@ -49,8 +48,7 @@ services:
     volumes:
       - ./socket-simulator:/app
     environment:
-      <<: *ws_env
-      - CDN_BASE_URL=${CDN_BASE_URL:-http://localhost:5008}
+      <<: [*ws_env, *cdn_env]
   device_emulator:
     build:
       context: ./device-emulator
@@ -60,8 +58,7 @@ services:
     volumes:
       - ./device-emulator:/app
     environment:
-      <<: *ws_env
-      - CDN_BASE_URL=${CDN_BASE_URL:-http://localhost:5008}
+      <<: [*ws_env, *cdn_env]
   docs:
     build:
       context: ./documentation
