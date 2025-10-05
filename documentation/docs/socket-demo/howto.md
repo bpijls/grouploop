@@ -22,12 +22,12 @@ if (d) {
 }
 ```
 
-## Add a new GameState
+## Add a new Scene
 
-1. Create a new file under `socket-demo/gamestates/`, e.g. `StateMyView.js`:
+1. Create a new file under `socket-demo/scenes/`, e.g. `MyScene.js`:
 
 ```js
-class StateMyView extends GameState {
+class MyScene extends Scene {
   setup() {}
   draw() {
     background(30);
@@ -40,17 +40,17 @@ class StateMyView extends GameState {
 2. Include it in `socket-demo/index.html` before `sketch.js`:
 
 ```html
-<script src="gamestates/StateMyView.js"></script>
+<script src="scenes/MyScene.js"></script>
 ```
 
 3. Register it in `socket-demo/sketch.js`:
 
 ```js
-gameStateManager.addState('myview', new StateMyView(deviceManager));
+gameStateManager.addScene('my', new MyScene(deviceManager));
 ```
 
 4. Switch to it from code or console:
 
 ```js
-gameStateManager.switchTo('myview');
+gameStateManager.switchTo('my');
 ```

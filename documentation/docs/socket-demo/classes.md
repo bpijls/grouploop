@@ -1,38 +1,32 @@
 # Classes
 
-## Class documentation introduction
+## Overview
 
-This section describes the main building blocks of the socket-demo. The runtime is split into two concerns:
+The socket-demo is composed of two layers:
 
-- Rendering and interaction are encapsulated in `GameState` implementations, coordinated by `GameStateManager`.
+- Rendering and input are encapsulated in `Scene` implementations, coordinated by `SceneManager`.
 - Device I/O and data parsing are encapsulated in `HitloopDevice` objects, coordinated by `HitloopDeviceManager`.
 
-Each class has a small, focused API so you can add new visualizations (states) or integrate device data with minimal coupling.
+Each class has a small, focused API so you can add new visualizations (scenes) or integrate device data with minimal coupling.
 
 ## Class diagram
 
-The diagram below shows how the classes relate:
-
-- `GameStateManager` owns a collection of `GameState` instances and decides which one is active.
-- Each `GameState` holds a reference to `HitloopDeviceManager` to read device data during `draw()`.
-- `HitloopDeviceManager` maintains a map of `HitloopDevice` instances keyed by hex id and handles WebSocket parsing/lifecycle.
-
 ```mermaid
 classDiagram
-  class GameState {
+  class Scene {
     +deviceManager: HitloopDeviceManager
     +setup()
     +draw()
   }
 
-  class GameStateManager {
+  class SceneManager {
     +deviceManager: HitloopDeviceManager
-    -states: Map~string, GameState~
+    -scenes: Map~string, Scene~
     -currentKey: string
-    +addState(key, state)
+    +addScene(key, scene)
     +switchTo(key)
-    +nextState()
-    +previousState()
+    +nextScene()
+    +previousScene()
     +draw()
   }
 
@@ -47,7 +41,6 @@ classDiagram
     +dNE: number
     +dSW: number
     +dSE: number
-    +parseHexData(hex): boolean
     +getSensorData(): object
   }
 
@@ -55,52 +48,44 @@ classDiagram
     +ws: WebSocket
     +websocketUrl: string
     -devices: Map~string, HitloopDevice~
-    -lastSeen: Map~string, number~
     +connect()
     +disconnect()
-    +handleMessage(data)
-    +parseAndUpdateDevice(hex)
-    +addDevice(device)
-    +removeDevice(id)
     +getDevice(id)
     +getAllDevices(): Map
     +getDeviceCount(): number
-    +pruneInactive()
   }
 
-  GameStateManager --> GameState : manages >
-  GameState --> HitloopDeviceManager : uses >
-  GameStateManager --> HitloopDeviceManager : uses >
+  SceneManager --> Scene : manages >
+  Scene --> HitloopDeviceManager : uses >
+  SceneManager --> HitloopDeviceManager : uses >
   HitloopDeviceManager --> HitloopDevice : contains >
 ```
 
-## GameState
+## Scene
 
 - Purpose: render a specific visualization/logic for the demo
 - API:
   - constructor(deviceManager)
-  - setup(): called when state is activated
+  - setup(): called when scene is activated
   - draw(): called every p5 draw frame
 
-## GameStateManager
+## SceneManager
 
-- Purpose: manage and switch between multiple `GameState` instances
+- Purpose: manage and switch between multiple `Scene` instances
 - API:
-  - addState(key, instance)
+  - addScene(key, instance)
   - switchTo(key)
   - draw()
-  - nextState()
-  - previousState()
+  - nextScene()
+  - previousScene()
 
 ## HitloopDevice
 
-- Purpose: represent a single device; parse frames and expose sensor values
+- Purpose: represent a single device; expose sensor values parsed from websocket frames
 - Properties:
   - id (hex string), color, motorState
   - ax, ay, az (0-255), dNW, dNE, dSW, dSE (0-255)
 - Methods:
-  - parseHexData(hexString): boolean
-  - setWebSocket(ws)
   - getSensorData(): { id, ax, ay, az, dNW, dNE, dSW, dSE, color, motorState }
 
 ## HitloopDeviceManager
@@ -110,8 +95,8 @@ classDiagram
   - ws, websocketUrl, devices (Map<idHex, HitloopDevice>)
 - Methods:
   - connect(), disconnect()
-  - handleMessage(data)
-  - parseAndUpdateDevice(hexString)
-  - addDevice(device), removeDevice(idHex)
   - getDevice(idHex), getAllDevices(), getDeviceCount()
-  - pruneInactive(): removes devices idle > 5s
+
+## CDN-delivered shared files
+
+`HitloopDevice.js`, `HitloopDeviceManager.js`, `p5.min.js`, and `p5.sound.min.js` are loaded from the CDN and shared across demos. See `socket-demo/index.html` for the script tags and the `cdn-server` service for how these files are hosted.
