@@ -137,7 +137,7 @@ window.draw = function() {
     const mapAccel = (v) => clamp(Math.round(mapRange(mapRange(v, 0, 255, -2, 2), -1, 1, 0, 255)), 0, 255);
     fill(mapAccel(acc.ax), mapAccel(acc.ay), mapAccel(acc.az));
     noStroke();
-    circle(circlePos.x, circlePos.y, 60);
+    circle(circlePos.x, circlePos.y, 160);
 
     fill(255);
     textAlign(CENTER);
