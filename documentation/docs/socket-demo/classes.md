@@ -17,9 +17,6 @@ The diagram below shows how the classes relate:
 - Each `GameState` holds a reference to `HitloopDeviceManager` to read device data during `draw()`.
 - `HitloopDeviceManager` maintains a map of `HitloopDevice` instances keyed by hex id and handles WebSocket parsing/lifecycle.
 
-
-
-
 ```mermaid
 classDiagram
   class GameState {
@@ -78,6 +75,7 @@ classDiagram
 ```
 
 ## GameState
+
 - Purpose: render a specific visualization/logic for the demo
 - API:
   - constructor(deviceManager)
@@ -85,6 +83,7 @@ classDiagram
   - draw(): called every p5 draw frame
 
 ## GameStateManager
+
 - Purpose: manage and switch between multiple `GameState` instances
 - API:
   - addState(key, instance)
@@ -94,6 +93,7 @@ classDiagram
   - previousState()
 
 ## HitloopDevice
+
 - Purpose: represent a single device; parse frames and expose sensor values
 - Properties:
   - id (hex string), color, motorState
@@ -104,6 +104,7 @@ classDiagram
   - getSensorData(): { id, ax, ay, az, dNW, dNE, dSW, dSE, color, motorState }
 
 ## HitloopDeviceManager
+
 - Purpose: manage device collection and websocket communication
 - Properties:
   - ws, websocketUrl, devices (Map<idHex, HitloopDevice>)
@@ -114,4 +115,3 @@ classDiagram
   - addDevice(device), removeDevice(idHex)
   - getDevice(idHex), getAllDevices(), getDeviceCount()
   - pruneInactive(): removes devices idle > 5s
-
