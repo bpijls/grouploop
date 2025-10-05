@@ -18,10 +18,18 @@
 
  
 WiFiMulti wifiMulti;
- WebSocketsClient webSocket;
+WebSocketsClient webSocket;
 SPARKFUN_LIS2DH12 accel;
 
 volatile bool wsConnected = false;
+static String deviceIdHex;
+
+static uint8_t encodeAccelToByte(float gValue) {
+	int val = (int)roundf(gValue * 32.0f) + 128; // map approx -4g..+4g to 0..255 with center at 128
+	if (val < 0) val = 0;
+	if (val > 255) val = 255;
+	return (uint8_t)val;
+}
 
 static void sendAccelOnce() {
 	if (!wsConnected) return;
@@ -30,10 +38,15 @@ static void sendAccelOnce() {
 		float ax = accel.getX() / 980.0f;
 		float ay = accel.getY() / 980.0f;
 		float az = accel.getZ() / 980.0f;
-		String msg = String("{\"ax\":") + String(ax, 3) +
-			String(",\"ay\":") + String(ay, 3) +
-			String(",\"az\":") + String(az, 3) + String("}");
-		webSocket.sendTXT(msg);
+
+		uint8_t axB = encodeAccelToByte(ax);
+		uint8_t ayB = encodeAccelToByte(ay);
+		uint8_t azB = encodeAccelToByte(az);
+
+		char line[19]; // 18 hex chars + null
+		// Format: id(4) + ax(2) + ay(2) + az(2) + 0xFF 0xFF 0xFF 0xFF
+		snprintf(line, sizeof(line), "%s%02X%02X%02XFFFFFFFF", deviceIdHex.c_str(), axB, ayB, azB);
+		webSocket.sendTXT(String(line) + "\n");
 	}
 }
  
@@ -137,6 +150,13 @@ static void sendAccelOnce() {
 		accel.setDataRate(LIS2DH12_ODR_100Hz);
 		USE_SERIAL.println("[LIS2DH12] Initialized.");
 	}
+
+	// Build device ID from last two bytes of MAC address
+	uint8_t mac[6];
+	WiFi.macAddress(mac);
+	char idBuf[5];
+	snprintf(idBuf, sizeof(idBuf), "%02X%02X", mac[4], mac[5]);
+	deviceIdHex = String(idBuf);
  }
  
  void loop() {
