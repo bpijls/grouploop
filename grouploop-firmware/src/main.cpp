@@ -23,6 +23,9 @@ SPARKFUN_LIS2DH12 accel;
 
 volatile bool wsConnected = false;
 static String deviceIdHex;
+static volatile bool streamEnabled = false;
+static uint32_t streamIntervalMs = 0;
+static uint32_t lastStreamMs = 0;
 
 static uint8_t encodeAccelToByte(float gValue) {
 	int val = (int)roundf(gValue * 32.0f) + 128; // map approx -4g..+4g to 0..255 with center at 128
@@ -67,7 +70,7 @@ static void sendAccelOnce() {
  
  void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
  
-     switch(type) {
+    switch(type) {
          case WStype_DISCONNECTED:
              USE_SERIAL.printf("[WSc] Disconnected!\n");
             wsConnected = false;
@@ -76,15 +79,71 @@ static void sendAccelOnce() {
              USE_SERIAL.printf("[WSc] Connected to url: %s\n", payload);
  
              // send message to server when Connected
-             webSocket.sendTXT("Connected");
+            webSocket.sendTXT("Connected");
             wsConnected = true;
              break;
         case WStype_TEXT: {
             USE_SERIAL.printf("[WSc] get text: %s\n", payload);
-            String cmd = String((const char*)payload);
-            cmd.trim();
-            if (cmd == "r") {
-                sendAccelOnce();
+            String all = String((const char*)payload);
+            all.replace("\r", "");
+            int start = 0;
+            while (true) {
+                int nl = all.indexOf('\n', start);
+                String line = (nl >= 0) ? all.substring(start, nl) : all.substring(start);
+                line.trim();
+                if (line.length() > 0) {
+                    // Handle commands: I, C<id><R><G><B>, M<id><strength><duration>, R<id>[<freq>]
+                    if (line == "I") {
+                        // Respond with our 2-byte ID (4 hex chars)
+                        webSocket.sendTXT(deviceIdHex + "\n");
+                    } else {
+                        char c0 = line.charAt(0);
+                        if (line.length() >= 5 && (c0 == 'C' || c0 == 'M' || c0 == 'R')) {
+                            String id = line.substring(1, 5);
+                            id.toUpperCase();
+                            if (id == deviceIdHex) {
+                                if (c0 == 'C') {
+                                    // Expect RGB: 6 hex chars
+                                    if (line.length() >= 11) {
+                                        // If you have NeoPixel hardware, parse and set color here
+                                        // String r = line.substring(5,7); String g = line.substring(7,9); String b = line.substring(9,11);
+                                        // Placeholder: acknowledge by sending one sample
+                                        sendAccelOnce();
+                                    }
+                                } else if (c0 == 'M') {
+                                    // Expect strength(2 hex) + duration(2 hex)
+                                    if (line.length() >= 9) {
+                                        // Placeholder: no-op for motor; could drive GPIO here
+                                        // Acknowledge by sending one sample
+                                        sendAccelOnce();
+                                    }
+                                } else if (c0 == 'R') {
+                                    if (line.length() == 5) {
+                                        // One-shot
+                                        sendAccelOnce();
+                                    } else if (line.length() >= 7) {
+                                        String freqHex = line.substring(5, 7);
+                                        freqHex.toUpperCase();
+                                        uint8_t freq = (uint8_t) strtol(freqHex.c_str(), nullptr, 16);
+                                        if (freq == 0) {
+                                            streamEnabled = false;
+                                            streamIntervalMs = 0;
+                                        } else {
+                                            // Cap to avoid div-by-zero
+                                            if (freq < 1) freq = 1;
+                                            streamIntervalMs = (uint32_t)(1000UL / (uint32_t)freq);
+                                            if (streamIntervalMs == 0) streamIntervalMs = 1;
+                                            lastStreamMs = millis();
+                                            streamEnabled = true;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                if (nl < 0) break;
+                start = nl + 1;
             }
             break;
         }
@@ -161,5 +220,12 @@ static void sendAccelOnce() {
  
  void loop() {
 	webSocket.loop();
+	if (streamEnabled) {
+		uint32_t nowMs = millis();
+		if (nowMs - lastStreamMs >= streamIntervalMs) {
+			lastStreamMs = nowMs;
+			sendAccelOnce();
+		}
+	}
  }
  

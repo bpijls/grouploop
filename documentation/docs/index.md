@@ -2,6 +2,19 @@
 
 A modular system for real-time interaction with a swarm of physical devices over WebSockets. Devices stream sensor data (accelerometer and beacon RSSI) and accept control commands (vibration motor and RGB LEDs). The stack includes a WebSocket server, web clients, simulators/emulators for development, and a CDN for shared libraries — all containerized via Docker.
 
+## Command protocol (overview)
+
+All commands and device responses are ASCII-hex, newline-terminated. Multi-byte values are big-endian.
+
+- L\n: List device IDs (server replies with IDs, one per line)
+- I\n: Devices reply with their 2-byte ID (4 hex chars)
+- C<id><RR><GG><BB>\n: Set color on device
+- M<id><SS><TT>\n: Motor strength and duration (1 byte each)
+- R<id>\n: One-shot sensor sample from device
+- R<id><FF>\n: Stream sensors at FF Hz; FF=00 stops streaming
+
+See Sensor Data Protocol for the payload format.
+
 ## Goals
 
 - Enable rapid prototyping and visualization of many devices concurrently
