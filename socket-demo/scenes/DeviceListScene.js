@@ -1,4 +1,4 @@
-class StateDevicesList extends GameState {
+class DeviceListScene extends Scene {
     setup() {}
     draw() {
         background(220);
@@ -15,5 +15,6 @@ class StateDevicesList extends GameState {
         }
     }
 }
+
 
 

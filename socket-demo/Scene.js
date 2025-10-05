@@ -1,4 +1,4 @@
-class GameState {
+class Scene {
     constructor(deviceManager) {
         this.deviceManager = deviceManager;
     }
@@ -7,5 +7,6 @@ class GameState {
 
     draw() {}
 }
+
 
 

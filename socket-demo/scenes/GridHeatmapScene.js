@@ -1,4 +1,4 @@
-class StateGridHeatmap extends GameState {
+class GridHeatmapScene extends Scene {
     setup() {}
     draw() {
         background(0);
@@ -67,5 +67,6 @@ class StateGridHeatmap extends GameState {
         text('Size: movement magnitude, Color: accelerometer (R:ax, G:ay, B:az)', 10, height - 10);
     }
 }
+
 
 
