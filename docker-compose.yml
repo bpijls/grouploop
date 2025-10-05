@@ -25,6 +25,16 @@ services:
     volumes:
       - ./socket-client:/app
     environment: *ws_env
+  cdn_client:
+    build:
+      context: ./cdn-client
+      dockerfile: Dockerfile
+    ports:
+      - "5008:5000" # Flask CDN for static/firmware
+    volumes:
+      - ./cdn-client:/app
+    environment:
+      - PYTHONUNBUFFERED=1
   simulator:
     build:
       context: ./socket-simulator
