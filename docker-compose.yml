@@ -28,14 +28,16 @@ services:
       - ./socket-client:/app
     environment:
       <<: [*ws_env, *cdn_env]
-  cdn_client:
+  cdn_server:
     build:
-      context: ./cdn-client
+      context: ./cdn-server
       dockerfile: Dockerfile
     ports:
       - "5008:5000" # Flask CDN for static/firmware
     volumes:
-      - ./cdn-client:/app
+      - ./cdn-server:/app
+      - ./cdn-client/app/static/js:/app/static/js
+      - ./cdn-client/app/static/firmware:/app/static/firmware
     environment:
       PYTHONUNBUFFERED: 1
       <<: *cdn_env
