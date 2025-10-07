@@ -26,7 +26,9 @@ public:
     BleProcess()
         : Process(),
           scanTimer(SCAN_INTERVAL_MS),
-          pBLEScan(nullptr)
+          pBLEScan(nullptr),
+          isScanning(false),
+          lastScanStartMs(0)
     {
         g_bleProcess = this;
     }
@@ -41,25 +43,46 @@ public:
     }
 
     void update() override {
+        if (isScanning) {
+            const uint32_t expectedDurationMs = (uint32_t)SCAN_DURATION * 1000UL;
+            const uint32_t watchdogMarginMs = 1500UL;
+            if (millis() - lastScanStartMs > expectedDurationMs + watchdogMarginMs) {
+                pBLEScan->stop();
+                pBLEScan->clearResults();
+                isScanning = false;
+                scanTimer.reset();
+            }
+            return;
+        }
         if (scanTimer.checkAndReset()) {
             startScan();
         }
     }
+
+    String getState() override { return isScanning ? String("SCANNING") : String("IDLE"); }
 
     void onScanComplete(BLEScanResults results) {
         //Serial.printf("Scan complete! Found %d devices.\n", results.getCount());                
         // ScanCompleteEvent event(results);
         // eventProcess->publish(event);
         // TODO: Implement event publishing
+        pBLEScan->clearResults();
+        isScanning = false;
+        scanTimer.reset();
     }
 
 private:
     void startScan() {
+        isScanning = true;
+        lastScanStartMs = millis();
         pBLEScan->start(SCAN_DURATION, scanCompleteCallback);
     }
     
     Timer scanTimer;
     BLEScan* pBLEScan;
+    bool isScanning;
+    uint32_t lastScanStartMs;
+    
 };
 
 // Define the callback function to pass to the BLE scanner
