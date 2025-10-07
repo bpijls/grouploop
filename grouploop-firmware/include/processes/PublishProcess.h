@@ -10,13 +10,15 @@ class PublishProcess : public Process {
 public:
     PublishProcess() : Process(), processes(nullptr) {}
 
-    
+    void setProcesses(std::map<String, Process*>* processes) {
+        this->processes = processes;
+    }
 
     void setup() override {
     }
 
     void update() override {
-    }
+    }    
 
     String getState() override { return String(); }
 
