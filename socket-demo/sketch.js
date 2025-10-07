@@ -3,10 +3,12 @@ const deviceManager = new HitloopDeviceManager('ws://feib.nl:5003');
 const gameStateManager = new GameStateManager(deviceManager);
 
 // Register example game states
-gameStateManager.addState('list', new StateDevicesList(deviceManager));
-gameStateManager.addState('first', new StateFirstDeviceDetails(deviceManager));
-gameStateManager.addState('heatmap', new StateGridHeatmap(deviceManager));
+// gameStateManager.addState('list', new StateDevicesList(deviceManager));
+// gameStateManager.addState('first', new StateFirstDeviceDetails(deviceManager));
+// gameStateManager.addState('heatmap', new StateGridHeatmap(deviceManager));
 gameStateManager.addState('circles', new StateDeviceCircles(deviceManager));
+gameStateManager.addState('physics', new PartialPhysics(deviceManager));
+gameStateManager.addState('physicsWithGlow', new PartialPhysicsWithGlow(deviceManager));
 
 function setup() {
     createCanvas(windowWidth, windowHeight);
@@ -14,7 +16,7 @@ function setup() {
     // Connect to WebSocket server
     deviceManager.connect();
     // Default state
-    gameStateManager.switchTo('list');
+    gameStateManager.switchTo('physicsWithGlow');
 }
 
 function draw() {
