@@ -14,12 +14,12 @@ extern BleProcess* g_bleProcess;
 // The callback function that is executed when the scan is complete.
 void scanCompleteCallback(BLEScanResults results);
 
-struct BLEData {
-    int rssiNE,
-    int rssiNW,
-    int rssiSW,
-    int rssiSE  
-};
+// struct BLEData {
+//     int rssiNE,
+//     int rssiNW,
+//     int rssiSW,
+//     int rssiSE  
+// };
 
 class BleProcess : public Process {
 public:

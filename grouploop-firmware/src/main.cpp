@@ -6,7 +6,7 @@ Data ontvangen van de server.                             |
 Commands van de server uitvoeren.                         |
 */
 #include "Arduino.h"
-#include <vector>
+#include <map>
 #include "config.h"
 #include "Timer.h"
 
@@ -15,6 +15,7 @@ Commands van de server uitvoeren.                         |
 #include "processes/LedProcess.h"
 #include "processes/VibrationProcess.h"
 #include "processes/BleProcess.h"
+#include "processes/PublishProcess.h"
 #include "Process.h"
 
 
@@ -29,12 +30,12 @@ IMUProcess imuProcess;
 BleProcess bleProcess;
 PublishProcess publishProcess;
 
-Process* processes[] = {      
-    &LedProcess,
-    &vibrationProcess,
-    &imuProcess,
-    &bleProcess,
-    &publishProcess
+std::map<String, Process*> processes = {
+	{"led", &LedProcess},
+	{"vibration", &vibrationProcess},
+	{"imu", &imuProcess},
+	{"ble", &bleProcess},
+	{"publish", &publishProcess}
 };
 
 void setup() {
@@ -42,15 +43,15 @@ void setup() {
 
   LedProcess.setBehavior(new HeartBeatBehavior(0xFF0000, 770, 2000));
 
-  // Initialize all processes and pass them the event manager
-  for (auto process : processes) {
-    process->setup();
+  // Initialize all processes
+  for (auto &entry : processes) {
+    entry.second->setup();
   }
 }
 
 void loop() {
   // Update all processes
-  for (auto process : processes) {
-    process->update();
+  for (auto &entry : processes) {
+    entry.second->update();
   }
 }
