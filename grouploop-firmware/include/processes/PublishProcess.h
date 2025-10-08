@@ -211,13 +211,7 @@ private:
         doc["type"] = "device_identification";
         doc["deviceId"] = deviceId;
         doc["deviceType"] = "scanner";
-        
-        // Create capabilities array
-        JsonArray capabilities = doc["capabilities"].to<JsonArray>();
-        capabilities.add("imu");
-        capabilities.add("ble_scanning");
-        capabilities.add("led_control");
-        capabilities.add("vibration_control");
+        doc["capabilities"] = JsonArray{"imu", "ble_scanning", "led_control", "vibration_control"};
         
         String message;
         serializeJson(doc, message);
@@ -342,6 +336,12 @@ private:
     
     void handleDeviceCommand(const JsonDocument& command) {
         String commandType = command["commandType"].as<String>();
+        String targetDevice = command["targetDevice"].as<String>();
+        
+        // Check if command is for this device
+        if (targetDevice != deviceId && targetDevice != "all") {
+            return;
+        }
         
         Serial.print("PublishProcess: Handling command: ");
         Serial.println(commandType);
@@ -351,38 +351,13 @@ private:
             if (commandType == "led" && processes->find("led") != processes->end()) {
                 // Handle LED command
                 Serial.println("PublishProcess: LED command received");
-                handleLEDCommand(command);
+                // TODO: Implement LED command handling
             } else if (commandType == "vibration" && processes->find("vibration") != processes->end()) {
                 // Handle vibration command
                 Serial.println("PublishProcess: Vibration command received");
-                handleVibrationCommand(command);
-            } else {
-                Serial.print("PublishProcess: Unknown command type: ");
-                Serial.println(commandType);
+                // TODO: Implement vibration command handling
             }
         }
-    }
-    
-    void handleLEDCommand(const JsonDocument& command) {
-        // TODO: Implement LED command handling
-        // Example: command["commandData"] might contain {"behavior": "pulse", "color": "#FF0000", "duration": 5000}
-        Serial.println("PublishProcess: LED command processing not yet implemented");
-        
-        // Access command data like this:
-        // String behavior = command["commandData"]["behavior"].as<String>();
-        // String color = command["commandData"]["color"].as<String>();
-        // int duration = command["commandData"]["duration"].as<int>();
-    }
-    
-    void handleVibrationCommand(const JsonDocument& command) {
-        // TODO: Implement vibration command handling
-        // Example: command["commandData"] might contain {"pattern": "pulse", "intensity": 0.8, "duration": 3000}
-        Serial.println("PublishProcess: Vibration command processing not yet implemented");
-        
-        // Access command data like this:
-        // String pattern = command["commandData"]["pattern"].as<String>();
-        // float intensity = command["commandData"]["intensity"].as<float>();
-        // int duration = command["commandData"]["duration"].as<int>();
     }
     
     // Member variables
