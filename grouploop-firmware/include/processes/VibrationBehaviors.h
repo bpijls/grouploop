@@ -4,6 +4,9 @@
 #include "Arduino.h"
 #include "Timer.h"
 #include "config.h"
+#include "Configuration.h"
+
+
 
 // --- Vibration Behavior Base Class ---
 class VibrationBehavior {
@@ -11,7 +14,7 @@ public:
     const char* type;
     virtual ~VibrationBehavior() {}
     virtual void setup() {
-        pinMode(VIBRATION_MOTOR_PIN, OUTPUT);
+        pinMode(configuration.getMotorPin(), OUTPUT);
     }
     virtual void update() = 0;    
 
@@ -27,7 +30,7 @@ public:
     MotorOffBehavior() : VibrationBehavior("Off") {}
     void setup() override {
         VibrationBehavior::setup();
-        analogWrite(VIBRATION_MOTOR_PIN, 0);
+        analogWrite(configuration.getMotorPin(), 0);
     }
     void update() override {
         // Do nothing, motor is off
@@ -42,7 +45,7 @@ public:
     
     void setup() override {
         VibrationBehavior::setup();
-        analogWrite(VIBRATION_MOTOR_PIN, intensity);
+        analogWrite(configuration.getMotorPin(), intensity);
     }
     
     void update() override {
@@ -61,13 +64,13 @@ public:
     void setup() override {
         VibrationBehavior::setup();
         burstTimer.reset();
-        analogWrite(VIBRATION_MOTOR_PIN, 0); // Start in off state
+        analogWrite(configuration.getMotorPin(), 0); // Start in off state
     }
     
     void update() override {
         if (burstTimer.interval > 0 && burstTimer.checkAndReset()) {
             motorOn = !motorOn;
-            analogWrite(VIBRATION_MOTOR_PIN, motorOn ? intensity : 0);
+            analogWrite(configuration.getMotorPin(), motorOn ? intensity : 0);
         }
     }
 private:
@@ -86,13 +89,13 @@ public:
     void setup() override {
         VibrationBehavior::setup();
         pulseTimer.reset();
-        analogWrite(VIBRATION_MOTOR_PIN, 0);
+        analogWrite(configuration.getMotorPin(), 0);
     }
     
     void update() override {
         if (pulseTimer.interval > 0 && pulseTimer.checkAndReset()) {
             motorOn = !motorOn;
-            analogWrite(VIBRATION_MOTOR_PIN, motorOn ? intensity : 0);
+            analogWrite(configuration.getMotorPin(), motorOn ? intensity : 0);
         }
     }
 private:

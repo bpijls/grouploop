@@ -6,10 +6,11 @@
 #include "Process.h"
 #include "config.h"
 #include "LedBehaviors.h"
+#include "Configuration.h"
 
 class LedProcess : public Process {
 public:
-    LedProcess() : Process(), pixels(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800), currentBehavior(nullptr) {
+    LedProcess() : Process(), pixels(LED_COUNT, configuration.getLEDPin(), NEO_GRB + NEO_KHZ800), currentBehavior(nullptr) {
     }
 
     ~LedProcess() {
@@ -34,6 +35,7 @@ public:
         if (currentBehavior) {
             currentBehavior->update();
         }
+
     }
 
     // Public members for access by BleManager

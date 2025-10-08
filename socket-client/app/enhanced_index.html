@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GroupLoop Device Control Panel</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: #333;
+            margin: 0;
+        }
+        
+        .connection-controls {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .connection-controls input {
+            padding: 8px 12px;
+            margin: 0 5px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+        
+        .connection-controls button {
+            padding: 8px 16px;
+            margin: 0 5px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+        }
+        
+        .connection-controls button:hover {
+            background-color: #45a049;
+        }
+        
+        .connection-controls button.disconnect {
+            background-color: #f44336;
+        }
+        
+        .connection-controls button.disconnect:hover {
+            background-color: #da190b;
+        }
+        
+        .broadcast-controls {
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .broadcast-controls h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        
+        .broadcast-controls .control-group {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .broadcast-controls label {
+            font-weight: bold;
+            min-width: 80px;
+        }
+        
+        .broadcast-controls input, .broadcast-controls select {
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+        
+        .broadcast-controls button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            background-color: #2196F3;
+            color: white;
+        }
+        
+        .broadcast-controls button:hover {
+            background-color: #1976D2;
+        }
+        
+        .broadcast-controls button.led {
+            background-color: #4CAF50;
+        }
+        
+        .broadcast-controls button.led:hover {
+            background-color: #45a049;
+        }
+        
+        .broadcast-controls button.vibration {
+            background-color: #FF9800;
+        }
+        
+        .broadcast-controls button.vibration:hover {
+            background-color: #F57C00;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>GroupLoop Device Control Panel</h1>
+        <p>Manage and control multiple BLE scanning devices</p>
+    </div>
+    
+    <div class="connection-controls">
+        <input type="text" id="wsUrl" value="ws://localhost:5003" placeholder="WebSocket URL">
+        <button onclick="connect()">Connect</button>
+        <button onclick="disconnect()" class="disconnect">Disconnect</button>
+        <button onclick="ping()">Ping</button>
+    </div>
+    
+    <div class="broadcast-controls">
+        <h3>Broadcast Controls (All Devices)</h3>
+        
+        <div class="control-group">
+            <label>LED Behavior:</label>
+            <select id="ledBehavior">
+                <option value="pulse">Pulse</option>
+                <option value="solid">Solid</option>
+                <option value="blink">Blink</option>
+                <option value="rainbow">Rainbow</option>
+                <option value="off">Off</option>
+            </select>
+            <label>Color:</label>
+            <input type="color" id="ledColor" value="#FF0000">
+            <label>Duration (ms):</label>
+            <input type="number" id="ledDuration" value="5000" min="100" max="30000">
+            <button onclick="broadcastLED()" class="led">Broadcast LED</button>
+        </div>
+        
+        <div class="control-group">
+            <label>Vibration Pattern:</label>
+            <select id="vibrationPattern">
+                <option value="pulse">Pulse</option>
+                <option value="double">Double Tap</option>
+                <option value="long">Long</option>
+                <option value="off">Off</option>
+            </select>
+            <label>Intensity:</label>
+            <input type="range" id="vibrationIntensity" min="0.1" max="1.0" step="0.1" value="0.8">
+            <span id="intensityValue">0.8</span>
+            <label>Duration (ms):</label>
+            <input type="number" id="vibrationDuration" value="3000" min="100" max="10000">
+            <button onclick="broadcastVibration()" class="vibration">Broadcast Vibration</button>
+        </div>
+    </div>
+    
+    <div id="device-control-container">
+        <!-- Device control panel will be inserted here -->
+    </div>
+    
+    <script src="enhanced_client.js"></script>
+    <script>
+        let client;
+        let ui;
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            const wsUrl = document.getElementById('wsUrl').value;
+            client = new DeviceManagerClient(wsUrl);
+            ui = new DeviceControlUI(wsUrl);
+            
+            // Update intensity display
+            const intensitySlider = document.getElementById('vibrationIntensity');
+            const intensityValue = document.getElementById('intensityValue');
+            intensitySlider.addEventListener('input', function() {
+                intensityValue.textContent = this.value;
+            });
+        });
+        
+        function connect() {
+            const wsUrl = document.getElementById('wsUrl').value;
+            if (wsUrl !== client.wsUrl) {
+                client = new DeviceManagerClient(wsUrl);
+                ui = new DeviceControlUI(wsUrl);
+            }
+            ui.connect();
+        }
+        
+        function disconnect() {
+            ui.disconnect();
+        }
+        
+        function ping() {
+            ui.client.ping();
+        }
+        
+        function broadcastLED() {
+            const behavior = document.getElementById('ledBehavior').value;
+            const color = document.getElementById('ledColor').value;
+            const duration = parseInt(document.getElementById('ledDuration').value);
+            
+            ui.client.broadcastLEDCommand(behavior, color, duration);
+        }
+        
+        function broadcastVibration() {
+            const pattern = document.getElementById('vibrationPattern').value;
+            const intensity = parseFloat(document.getElementById('vibrationIntensity').value);
+            const duration = parseInt(document.getElementById('vibrationDuration').value);
+            
+            ui.client.broadcastVibrationCommand(pattern, intensity, duration);
+        }
+    </script>
+</body>
+</html>
