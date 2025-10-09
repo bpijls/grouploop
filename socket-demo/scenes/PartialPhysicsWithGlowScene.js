@@ -1,22 +1,33 @@
 // Minimal sound loader that works with or without p5.sound
 function _safeLoadSound(path, onLoad) {
   try {
-    if (typeof window !== 'undefined' && typeof window.loadSound === 'function') {
+    if (
+      typeof window !== "undefined" &&
+      typeof window.loadSound === "function"
+    ) {
       // p5.sound is present – use it
       return window.loadSound(path, onLoad);
     }
-  } catch(_) {}
+  } catch (_) {}
   // Fallback: HTMLAudioElement shim with a tiny p5-like API we use later
   const audio = new Audio(path);
   // ensure callbacks fire once it's ready enough to play
-  const ready = () => { if (onLoad) onLoad(); };
-  audio.addEventListener('canplaythrough', ready, { once: true });
+  const ready = () => {
+    if (onLoad) onLoad();
+  };
+  audio.addEventListener("canplaythrough", ready, { once: true });
   // p5-like helpers used in the scene
   audio.isLoaded = () => true;
   audio.isPlaying = () => !audio.paused;
-  audio.setLoop = (b) => { audio.loop = !!b; };
-  audio.setVolume = (v) => { audio.volume = Math.max(0, Math.min(1, v ?? 1)); };
-  audio.loop = () => { audio.play().catch(()=>{}); };
+  audio.setLoop = (b) => {
+    audio.loop = !!b;
+  };
+  audio.setVolume = (v) => {
+    audio.volume = Math.max(0, Math.min(1, v ?? 1));
+  };
+  audio.loop = () => {
+    audio.play().catch(() => {});
+  };
   return audio;
 }
 class PartialPhysicsWithGlowScene extends Scene {
@@ -39,16 +50,27 @@ class PartialPhysicsWithGlowScene extends Scene {
     this._audioStarted = false;
     this.bgVol = 0.4;
     // --- Step 1: magnets (left & right centers)
-    this.magnets = [];      // [{x,y},{x,y}]
-    this.magnetR = 16;      // visual radius for debug
+    this.magnets = []; // [{x,y},{x,y}]
+    this.magnetR = 16; // visual radius for debug
     this.showMagnets = true; // draw faint markers (can toggle later)
+    this._k2 = false; // key '2' state (edge-trigger)
+    this.starSplit = false; // when true: left stars = blue, right stars = red
     // Simplified magnet + random walk system for circles
     this._devState = new Map();
     this.magnetStrength = 0.01; // pull strength
-    this.jitterStrength = 1.5;  // random walk range
-    this.deviceRadius = 40;      // collision body radius for device circles
+    this.jitterStrength = 1.5; // random walk range
+    this.deviceRadius = 40; // collision body radius for device circles
     this.collisionIterations = 4; // how many relaxation passes per frame
     this.magnetDampenFactor = 0.9; // 0..1, how strongly movement reduces magnet pull
+
+    // WanderingAttractors-style motion params
+    this.params = {
+      maxSpeed: 2.0,
+      maxForce: 0.08,
+      wanderJitter: 0.05,
+      baseAttraction: 0.16,
+      edgePadding: 40,
+    };
   }
 
   setup() {
@@ -97,9 +119,11 @@ class PartialPhysicsWithGlowScene extends Scene {
     // Load background sound (works with or without p5.sound)
     this.bgSound = _safeLoadSound("./sounds/rain.mp3", () => {
       try {
-        if (this.bgSound && typeof this.bgSound.setLoop === 'function') this.bgSound.setLoop(true);
-        if (this.bgSound && typeof this.bgSound.setVolume === 'function') this.bgSound.setVolume(this.bgVol);
-      } catch(_) {}
+        if (this.bgSound && typeof this.bgSound.setLoop === "function")
+          this.bgSound.setLoop(true);
+        if (this.bgSound && typeof this.bgSound.setVolume === "function")
+          this.bgSound.setVolume(this.bgVol);
+      } catch (_) {}
       this._startBg();
     });
 
@@ -133,21 +157,21 @@ class PartialPhysicsWithGlowScene extends Scene {
   }
 
   // Compute magnet positions for current canvas size
-  _updateMagnets(){
+  _updateMagnets() {
     this.magnets = [
       { x: 0 + this.magnetR, y: height * 0.5 }, // left edge middle
-      { x: width - this.magnetR, y: height * 0.5 } // right edge middle
+      { x: width - this.magnetR, y: height * 0.5 }, // right edge middle
     ];
   }
 
   // (Debug) draw magnets so we can see them while building
-  _drawMagnets(){
+  _drawMagnets() {
     if (!this.showMagnets) return;
     push();
     noFill();
     stroke(255, 90);
     strokeWeight(2);
-    for (const m of this.magnets){
+    for (const m of this.magnets) {
       circle(m.x, m.y, this.magnetR * 2);
       // crosshair
       line(m.x - this.magnetR * 0.7, m.y, m.x + this.magnetR * 0.7, m.y);
@@ -156,76 +180,149 @@ class PartialPhysicsWithGlowScene extends Scene {
     pop();
   }
 
-  // Simple magnet attraction + random walk for device positions
-  _applyMagnetAndRandomWalk(devKey, x, y, magStrength){
-    let s = this._devState.get(devKey);
-    if(!s){
-      s = { x:x, y:y };
-      this._devState.set(devKey, s);
+  // Wandering + left/right attraction (WanderingAttractors-style), circles only
+  _wanderAndAttract(devKey, sensor) {
+    let p = this._devState.get(devKey);
+    if (!p) {
+      p = {
+        x: random(60, width - 60),
+        y: random(60, height - 60),
+        vx: random(-1, 1),
+        vy: random(-1, 1),
+      };
+      this._devState.set(devKey, p);
     }
 
-    // Random walk noise
-    s.x += random(-this.jitterStrength, this.jitterStrength);
-    s.y += random(-this.jitterStrength, this.jitterStrength);
+    // --- Wander: small random steering force
+    const jitter = this.params.wanderJitter;
+    p.vx += random(-jitter, jitter);
+    p.vy += random(-jitter, jitter);
 
-    // Decide target magnet
-    const leftMag = this.magnets[0];
-    const rightMag = this.magnets[1];
-    const target = (s.x < width/2) ? leftMag : rightMag;
+    // --- Attraction weights from NE/NW distance (inverse distance as proxy for strength)
+    const eps = 1e-4;
+    const invNW = 1.0 / max(eps, sensor.dNW || 0);
+    const invNE = 1.0 / max(eps, sensor.dNE || 0);
+    const sumInv = invNW + invNE + eps;
+    const wLeft = invNW / sumInv; // left magnet maps to NW
+    const wRight = invNE / sumInv; // right magnet maps to NE
 
-    // Move slightly toward target
-    const k = magStrength ?? this.magnetStrength;
-    s.x += (target.x - s.x) * k;
-    s.y += (target.y - s.y) * k;
+    // --- Movement-based damping from accel
+    const ax = this._normAccel(sensor.ax ?? sensor.aX ?? sensor.accX);
+    const ay = this._normAccel(sensor.ay ?? sensor.aY ?? sensor.accY);
+    const az = this._normAccel(sensor.az ?? sensor.aZ ?? sensor.accZ);
+    const movement = Math.min(1, Math.sqrt(ax * ax + ay * ay + az * az));
+    const attractBase =
+      this.params.baseAttraction * (1 - movement * this.magnetDampenFactor);
 
-    // Constrain inside canvas
-    s.x = constrain(s.x, 40, width - 40);
-    s.y = constrain(s.y, 40, height - 40);
+    // --- Forces toward left/right attractors
+    const left = this.magnets[0];
+    const right = this.magnets[1];
 
-    return { x: s.x, y: s.y };
+    let lx = left.x - p.x,
+        ly = left.y - p.y;
+    let lm = Math.sqrt(lx * lx + ly * ly) || 1;
+    lx /= lm;
+    // horizontal-only magnet: zero vertical component
+    p.vx += lx * (attractBase * wLeft);
+    // no vertical magnet influence on vy
+
+    let rx = right.x - p.x,
+        ry = right.y - p.y;
+    let rm = Math.sqrt(rx * rx + ry * ry) || 1;
+    rx /= rm;
+    // horizontal-only magnet: zero vertical component
+    p.vx += rx * (attractBase * wRight);
+    // no vertical magnet influence on vy
+
+    // --- Limit velocity & integrate position
+    const maxS = this.params.maxSpeed;
+    const v2 = p.vx * p.vx + p.vy * p.vy;
+    if (v2 > maxS * maxS) {
+      const v = Math.sqrt(v2);
+      p.vx = (p.vx / v) * maxS;
+      p.vy = (p.vy / v) * maxS;
+    }
+
+    p.x += p.vx;
+    p.y += p.vy;
+
+    // Keep inside bounds (accounting for circle radius)
+    const pad = this.deviceRadius;
+    p.x = constrain(p.x, pad, width - pad);
+    p.y = constrain(p.y, pad, height - pad);
+
+    return { x: p.x, y: p.y };
   }
 
-  _startBg(){
+  _startBg() {
     // Try to resume WebAudio (if available)
-    try{
-      if (typeof getAudioContext === 'function') {
+    try {
+      if (typeof getAudioContext === "function") {
         const ctx = getAudioContext();
-        if (ctx && ctx.state !== 'running') ctx.resume().catch(()=>{});
+        if (ctx && ctx.state !== "running") ctx.resume().catch(() => {});
       }
-    }catch(_){/* no-op */}
+    } catch (_) {
+      /* no-op */
+    }
 
     // Try to start immediately
-    try{
-      if (this.bgSound && typeof this.bgSound.isLoaded === 'function' && !this.bgSound.isPlaying()) {
-        if (typeof this.bgSound.loop === 'function') this.bgSound.loop();
-        if (typeof this.bgSound.setVolume === 'function') this.bgSound.setVolume(this.bgVol);
-      } else if (this.bgSound && this.bgSound instanceof Audio && this.bgSound.paused) {
+    try {
+      if (
+        this.bgSound &&
+        typeof this.bgSound.isLoaded === "function" &&
+        !this.bgSound.isPlaying()
+      ) {
+        if (typeof this.bgSound.loop === "function") this.bgSound.loop();
+        if (typeof this.bgSound.setVolume === "function")
+          this.bgSound.setVolume(this.bgVol);
+      } else if (
+        this.bgSound &&
+        this.bgSound instanceof Audio &&
+        this.bgSound.paused
+      ) {
         this.bgSound.loop = true;
         this.bgSound.volume = this.bgVol;
-        this.bgSound.play().catch(()=>{});
+        this.bgSound.play().catch(() => {});
       }
-    }catch(_){/* no-op */}
+    } catch (_) {
+      /* no-op */
+    }
 
     // Also start on ANY user action (helps with autoplay policies)
     const startOnce = () => {
-      try{ if (typeof userStartAudio === 'function') userStartAudio(); }catch(_){/* no-op */}
-      try{
-        if (this.bgSound && typeof this.bgSound.isLoaded === 'function' && !this.bgSound.isPlaying()){
-          if (typeof this.bgSound.loop === 'function') this.bgSound.loop();
-          if (typeof this.bgSound.setVolume === 'function') this.bgSound.setVolume(this.bgVol);
-        } else if (this.bgSound && this.bgSound instanceof Audio && this.bgSound.paused){
+      try {
+        if (typeof userStartAudio === "function") userStartAudio();
+      } catch (_) {
+        /* no-op */
+      }
+      try {
+        if (
+          this.bgSound &&
+          typeof this.bgSound.isLoaded === "function" &&
+          !this.bgSound.isPlaying()
+        ) {
+          if (typeof this.bgSound.loop === "function") this.bgSound.loop();
+          if (typeof this.bgSound.setVolume === "function")
+            this.bgSound.setVolume(this.bgVol);
+        } else if (
+          this.bgSound &&
+          this.bgSound instanceof Audio &&
+          this.bgSound.paused
+        ) {
           this.bgSound.loop = true;
           this.bgSound.volume = this.bgVol;
-          this.bgSound.play().catch(()=>{});
+          this.bgSound.play().catch(() => {});
         }
-      }catch(_){/* no-op */}
-      window.removeEventListener('pointerdown', startOnce);
-      window.removeEventListener('touchstart', startOnce);
-      window.removeEventListener('keydown', startOnce);
+      } catch (_) {
+        /* no-op */
+      }
+      window.removeEventListener("pointerdown", startOnce);
+      window.removeEventListener("touchstart", startOnce);
+      window.removeEventListener("keydown", startOnce);
     };
-    window.addEventListener('pointerdown', startOnce, {once:true});
-    window.addEventListener('touchstart', startOnce, {once:true});
-    window.addEventListener('keydown', startOnce, {once:true});
+    window.addEventListener("pointerdown", startOnce, { once: true });
+    window.addEventListener("touchstart", startOnce, { once: true });
+    window.addEventListener("keydown", startOnce, { once: true });
   }
 
   _buildObstacleGrid() {
@@ -352,12 +449,36 @@ class PartialPhysicsWithGlowScene extends Scene {
     }
     L.background(0, bgAlpha);
     L.filter(BLUR, blur);
-    L.stroke(tint);
+    // First move all stars (no drawing). Keeps cost constant across modes.
     for (const p of this.stars) {
       if (!p) continue;
       this._moveStar(p);
-      L.strokeWeight(p.s);
-      L.point(p.x, p.y);
+    }
+
+    if (!this.starSplit) {
+      // Single-pass draw
+      L.stroke(tint);
+      for (const p of this.stars) {
+        if (!p) continue;
+        L.strokeWeight(p.s);
+        L.point(p.x, p.y);
+      }
+    } else {
+      // Split mode: draw in two passes to avoid per-point state changes
+      // Left half (blue)
+      L.stroke(80, 180, 255);
+      for (const p of this.stars) {
+        if (!p || p.x >= width * 0.5) continue;
+        L.strokeWeight(p.s);
+        L.point(p.x, p.y);
+      }
+      // Right half (red)
+      L.stroke(255, 100, 100);
+      for (const p of this.stars) {
+        if (!p || p.x < width * 0.5) continue;
+        L.strokeWeight(p.s);
+        L.point(p.x, p.y);
+      }
     }
     L.pop();
     image(L, 0, 0);
@@ -396,6 +517,11 @@ class PartialPhysicsWithGlowScene extends Scene {
       this.mode === "default" ? this._startWord() : this._clearWord();
     }
     this._k1 = k1;
+    const k2 = keyIsDown(50); // '2'
+    if (k2 && !this._k2) {
+      this.starSplit = !this.starSplit;
+    }
+    this._k2 = k2;
 
     this.obstacles.length = 0;
     const dm = this.deviceManager,
@@ -404,21 +530,10 @@ class PartialPhysicsWithGlowScene extends Scene {
       devPositions = [];
     for (const dev of devs) {
       const d = dev.getSensorData();
-      let x = width / 2;
-      let y = height / 2;
-
-      // Movement metric from accel (0..1)
-      const ax = this._normAccel(d.ax ?? d.aX ?? d.accX);
-      const ay = this._normAccel(d.ay ?? d.aY ?? d.accY);
-      const az = this._normAccel(d.az ?? d.aZ ?? d.accZ);
-      const movement = Math.min(1, Math.sqrt((ax*ax) + (ay*ay) + (az*az)));
-
-      // Reduce magnet pull when moving
-      const magK = Math.max(0.0005, this.magnetStrength * (1 - movement * this.magnetDampenFactor));
-
-      // Apply simple magnet + random walk system with per-device strength
       const key = dev.id ?? dev.getId?.() ?? dev;
-      const pos = this._applyMagnetAndRandomWalk(key, x, y, magK);
+
+      // WanderingAttractors-style integration (smooth + weighted edge magnets)
+      const pos = this._wanderAndAttract(key, d);
 
       devPositions.push({ x: pos.x, y: pos.y, d });
       // obstacles added after collision resolution
@@ -427,16 +542,16 @@ class PartialPhysicsWithGlowScene extends Scene {
     // --- Resolve collisions between device circles (simple relaxation) ---
     const R = this.deviceRadius;
     const minDist = R * 2;
-    for (let it = 0; it < this.collisionIterations; it++){
-      for (let i = 0; i < devPositions.length; i++){
-        for (let j = i + 1; j < devPositions.length; j++){
+    for (let it = 0; it < this.collisionIterations; it++) {
+      for (let i = 0; i < devPositions.length; i++) {
+        for (let j = i + 1; j < devPositions.length; j++) {
           const a = devPositions[i];
           const b = devPositions[j];
           const dx = b.x - a.x;
           const dy = b.y - a.y;
           let dist = Math.hypot(dx, dy);
           if (dist === 0) dist = 0.0001;
-          if (dist < minDist){
+          if (dist < minDist) {
             const overlap = (minDist - dist) * 0.5;
             const nx = dx / dist;
             const ny = dy / dist;
@@ -455,7 +570,7 @@ class PartialPhysicsWithGlowScene extends Scene {
     }
 
     // Rebuild obstacles from resolved device positions
-    for (const p of devPositions){
+    for (const p of devPositions) {
       this.obstacles.push({ x: p.x, y: p.y, r: R });
     }
 
