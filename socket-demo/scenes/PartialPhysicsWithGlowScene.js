@@ -38,6 +38,17 @@ class PartialPhysicsWithGlowScene extends Scene {
     this.bgSound = null;
     this._audioStarted = false;
     this.bgVol = 0.4;
+    // --- Step 1: magnets (left & right centers)
+    this.magnets = [];      // [{x,y},{x,y}]
+    this.magnetR = 16;      // visual radius for debug
+    this.showMagnets = true; // draw faint markers (can toggle later)
+    // Simplified magnet + random walk system for circles
+    this._devState = new Map();
+    this.magnetStrength = 0.01; // pull strength
+    this.jitterStrength = 1.5;  // random walk range
+    this.deviceRadius = 40;      // collision body radius for device circles
+    this.collisionIterations = 4; // how many relaxation passes per frame
+    this.magnetDampenFactor = 0.9; // 0..1, how strongly movement reduces magnet pull
   }
 
   setup() {
@@ -91,6 +102,8 @@ class PartialPhysicsWithGlowScene extends Scene {
       } catch(_) {}
       this._startBg();
     });
+
+    this._updateMagnets();
   }
 
   _resetStars() {
@@ -117,6 +130,59 @@ class PartialPhysicsWithGlowScene extends Scene {
       p.dispersing = false;
     }
     this.mode = "default";
+  }
+
+  // Compute magnet positions for current canvas size
+  _updateMagnets(){
+    this.magnets = [
+      { x: 0 + this.magnetR, y: height * 0.5 }, // left edge middle
+      { x: width - this.magnetR, y: height * 0.5 } // right edge middle
+    ];
+  }
+
+  // (Debug) draw magnets so we can see them while building
+  _drawMagnets(){
+    if (!this.showMagnets) return;
+    push();
+    noFill();
+    stroke(255, 90);
+    strokeWeight(2);
+    for (const m of this.magnets){
+      circle(m.x, m.y, this.magnetR * 2);
+      // crosshair
+      line(m.x - this.magnetR * 0.7, m.y, m.x + this.magnetR * 0.7, m.y);
+      line(m.x, m.y - this.magnetR * 0.7, m.x, m.y + this.magnetR * 0.7);
+    }
+    pop();
+  }
+
+  // Simple magnet attraction + random walk for device positions
+  _applyMagnetAndRandomWalk(devKey, x, y, magStrength){
+    let s = this._devState.get(devKey);
+    if(!s){
+      s = { x:x, y:y };
+      this._devState.set(devKey, s);
+    }
+
+    // Random walk noise
+    s.x += random(-this.jitterStrength, this.jitterStrength);
+    s.y += random(-this.jitterStrength, this.jitterStrength);
+
+    // Decide target magnet
+    const leftMag = this.magnets[0];
+    const rightMag = this.magnets[1];
+    const target = (s.x < width/2) ? leftMag : rightMag;
+
+    // Move slightly toward target
+    const k = magStrength ?? this.magnetStrength;
+    s.x += (target.x - s.x) * k;
+    s.y += (target.y - s.y) * k;
+
+    // Constrain inside canvas
+    s.x = constrain(s.x, 40, width - 40);
+    s.y = constrain(s.y, 40, height - 40);
+
+    return { x: s.x, y: s.y };
   }
 
   _startBg(){
@@ -323,6 +389,7 @@ class PartialPhysicsWithGlowScene extends Scene {
 
   draw() {
     background(0);
+    this._updateMagnets();
 
     const k1 = keyIsDown(49);
     if (k1 && !this._k1) {
@@ -336,17 +403,60 @@ class PartialPhysicsWithGlowScene extends Scene {
     const devs = [...dm.getAllDevices().values()],
       devPositions = [];
     for (const dev of devs) {
-      const d = dev.getSensorData(),
-        toPx = (v) => ((255 - (v || 0)) / 255) * Math.hypot(width, height);
-      const dNW = toPx(d.dNW),
-        dNE = toPx(d.dNE),
-        dSW = toPx(d.dSW);
-      let x = (width * width - (dNE * dNE - dNW * dNW)) / (2 * width);
-      let y = (height * height - (dSW * dSW - dNW * dNW)) / (2 * height);
-      x = constrain(x, 40, width - 40);
-      y = constrain(y, 40, height - 40);
-      devPositions.push({ x, y, d });
-      this.obstacles.push({ x, y, r: 40 });
+      const d = dev.getSensorData();
+      let x = width / 2;
+      let y = height / 2;
+
+      // Movement metric from accel (0..1)
+      const ax = this._normAccel(d.ax ?? d.aX ?? d.accX);
+      const ay = this._normAccel(d.ay ?? d.aY ?? d.accY);
+      const az = this._normAccel(d.az ?? d.aZ ?? d.accZ);
+      const movement = Math.min(1, Math.sqrt((ax*ax) + (ay*ay) + (az*az)));
+
+      // Reduce magnet pull when moving
+      const magK = Math.max(0.0005, this.magnetStrength * (1 - movement * this.magnetDampenFactor));
+
+      // Apply simple magnet + random walk system with per-device strength
+      const key = dev.id ?? dev.getId?.() ?? dev;
+      const pos = this._applyMagnetAndRandomWalk(key, x, y, magK);
+
+      devPositions.push({ x: pos.x, y: pos.y, d });
+      // obstacles added after collision resolution
+    }
+
+    // --- Resolve collisions between device circles (simple relaxation) ---
+    const R = this.deviceRadius;
+    const minDist = R * 2;
+    for (let it = 0; it < this.collisionIterations; it++){
+      for (let i = 0; i < devPositions.length; i++){
+        for (let j = i + 1; j < devPositions.length; j++){
+          const a = devPositions[i];
+          const b = devPositions[j];
+          const dx = b.x - a.x;
+          const dy = b.y - a.y;
+          let dist = Math.hypot(dx, dy);
+          if (dist === 0) dist = 0.0001;
+          if (dist < minDist){
+            const overlap = (minDist - dist) * 0.5;
+            const nx = dx / dist;
+            const ny = dy / dist;
+            a.x -= nx * overlap;
+            a.y -= ny * overlap;
+            b.x += nx * overlap;
+            b.y += ny * overlap;
+            // keep inside bounds
+            a.x = constrain(a.x, R, width - R);
+            a.y = constrain(a.y, R, height - R);
+            b.x = constrain(b.x, R, width - R);
+            b.y = constrain(b.y, R, height - R);
+          }
+        }
+      }
+    }
+
+    // Rebuild obstacles from resolved device positions
+    for (const p of devPositions){
+      this.obstacles.push({ x: p.x, y: p.y, r: R });
     }
 
     if (this.mode === "text")
@@ -390,6 +500,7 @@ class PartialPhysicsWithGlowScene extends Scene {
 
     this._drawStars(colorMode);
     this._drawWord();
+    this._drawMagnets();
 
     fill(255);
     noStroke();
@@ -398,7 +509,7 @@ class PartialPhysicsWithGlowScene extends Scene {
     for (const { x, y, d } of devPositions) {
       noStroke();
       fill(...d.color);
-      ellipse(x, y, 80);
+      ellipse(x, y, this.deviceRadius * 2);
       const ax = this._normAccel(d.ax ?? d.aX ?? d.accX);
       const ay = this._normAccel(d.ay ?? d.aY ?? d.accY);
       const az = this._normAccel(d.az ?? d.aZ ?? d.accZ);
