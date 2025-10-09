@@ -15,7 +15,7 @@ Commands van de server uitvoeren.                         |
 #include "processes/IMUProcess.h"
 #include "processes/LedProcess.h"
 #include "processes/VibrationProcess.h"
-#include "processes/BleProcess.h"
+#include "processes/BLEProcess.h"
 #include "processes/PublishProcess.h"
 #include "processes/ConfigurationProcess.h"
 #include "processes/WiFiProcess.h"
@@ -94,46 +94,21 @@ void setup() {
 }
 
 void loop() {
-  // Update all processes
-  for (auto &entry : processes) {
-    entry.second->update();
+  // Always update configuration process first
+  if (configurationProcess) {
+    configurationProcess->update();
   }
   
-  // Example: Access beacon data (this would typically be done in PublishProcess)
-  static uint32_t lastBeaconLog = 0;
-  if (millis() - lastBeaconLog > 5000) { // Log every 5 seconds
-    lastBeaconLog = millis();
-    
-    // Log system status
-    Serial.println("=== System Status ===");
-    Serial.print("WiFi: ");
-    Serial.println(wifiProcess->getState());
-    if (wifiProcess->isWiFiConnected()) {
-      Serial.print("IP: ");
-      Serial.print(wifiProcess->getIPAddress());
-      Serial.print(", Signal: ");
-      Serial.print(wifiProcess->getRSSI());
-      Serial.println(" dBm");
-    }
-    Serial.print("WebSocket: ");
-    Serial.println(publishProcess->getState());
-    Serial.print("Device ID: ");
-    Serial.println(publishProcess->getDeviceId());
-    
-    // Get latest scan results
-    const BLEScanResult& scanResult = bleProcess->getLatestScanResult();
-    
-    if (scanResult.beacons.size() > 0) {
-      Serial.println("=== Current Beacon Status ===");
-      Serial.print("NE: ");
-      Serial.print(bleProcess->getBeaconRSSI("NE"));
-      Serial.print(" dBm, NW: ");
-      Serial.print(bleProcess->getBeaconRSSI("NW"));
-      Serial.print(" dBm, SE: ");
-      Serial.print(bleProcess->getBeaconRSSI("SE"));
-      Serial.print(" dBm, SW: ");
-      Serial.println(bleProcess->getBeaconRSSI("SW"));
-    }
-    Serial.println("=====================");
+  // If in configuration mode, halt other processes until exit or timeout
+  if (configurationProcess && configurationProcess->isInConfigurationMode()) {
+    return;
   }
+  
+  // Otherwise update all other processes
+  for (auto &entry : processes) {
+    if (entry.first != "configuration") {
+      entry.second->update();
+    }
+  }
+  
 }
