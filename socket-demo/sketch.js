@@ -6,6 +6,7 @@ const gameStateManager = new SceneManager(deviceManager);
 gameStateManager.addScene('list', new DeviceListScene(deviceManager));
 gameStateManager.addScene('first', new FirstDeviceDetailsScene(deviceManager));
 gameStateManager.addScene('heatmap', new GridHeatmapScene(deviceManager));
+gameStateManager.addScene('wander', new WanderingAttractorsScene(deviceManager));
 
 function setup() {
     createCanvas(400, 400);
