@@ -9,6 +9,7 @@ const gameStateManager = new SceneManager(deviceManager);
 // gameStateManager.addScene('circles', new StateDeviceCirclesScene(deviceManager));
 // gameStateManager.addScene('physics', new PartialPhysicsScene(deviceManager));
 gameStateManager.addScene('physicsWithGlow', new PartialPhysicsWithGlowScene(deviceManager));
+gameStateManager.addScene('wander', new WanderingAttractorsScene(deviceManager));
 
 function setup() {
     createCanvas(windowWidth, windowHeight);
