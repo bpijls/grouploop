@@ -1,170 +1,90 @@
-#ifndef BLE_Process_H
-#define BLE_Process_H
+#ifndef BLE_PROCESS_H
+#define BLE_PROCESS_H
 
 #include <BLEDevice.h>
 #include <BLEScan.h>
 #include "Process.h"
 #include "Timer.h"
 #include "config.h"
-#include "Configuration.h"
-#include <map>
-#include <vector>
 
 // Forward declaration for the global pointer
-class BleProcess;
-extern BleProcess* g_bleProcess;
+class BLEProcess;
+extern BLEProcess* g_BLEProcess;
 
 // The callback function that is executed when the scan is complete.
 void scanCompleteCallback(BLEScanResults results);
 
-// Structure to hold beacon data
-struct BeaconData {
-    String beaconId;
-    int rssi;
-    String address;
-    uint32_t timestamp;
-    
-    BeaconData() : rssi(0), timestamp(0) {}
-    BeaconData(const String& id, int r, const String& addr, uint32_t ts) 
-        : beaconId(id), rssi(r), address(addr), timestamp(ts) {}
-};
-
-// Structure to hold complete BLE scan results
-struct BLEScanResult {
-    std::map<String, BeaconData> beacons;  // Key: beacon identifier, Value: beacon data
-    uint32_t scanTimestamp;
-    
-    BLEScanResult() : scanTimestamp(0) {}
-};
-
-class BleProcess : public Process {
+class BLEProcess : public Process {
 public:
-    BleProcess()
+    BLEProcess()
         : Process(),
-          scanTimer(SCAN_INTERVAL_MS),
+          scanOnTimer((unsigned long)(SCAN_DURATION * 1000)),
+          scanOffTimer(SCAN_INTERVAL_MS),
           pBLEScan(nullptr),
-          isScanning(false),
-          lastScanStartMs(0)
+          scanning(false)
     {
-        g_bleProcess = this;
+        g_BLEProcess = this;
     }
 
     void setup() override {
+        Process::setup();        
         BLEDevice::init("");
         pBLEScan = BLEDevice::getScan();
         pBLEScan->setActiveScan(false);
         pBLEScan->setInterval(BLE_SCAN_INTERVAL);
         pBLEScan->setWindow(BLE_SCAN_WINDOW);
-        scanTimer.reset();        
+        // Start in OFF period; will begin scanning after the first off interval elapses
+        scanOffTimer.reset();
+        Serial.println("BLE Initialized");
     }
 
     void update() override {
-        if (isScanning) {
-            const uint32_t expectedDurationMs = (uint32_t)SCAN_DURATION * 1000UL;
-            const uint32_t watchdogMarginMs = 1500UL;
-            if (millis() - lastScanStartMs > expectedDurationMs + watchdogMarginMs) {
-                pBLEScan->stop();
-                pBLEScan->clearResults();
-                isScanning = false;
-                scanTimer.reset();
+        if (!scanning) {
+            if (scanOffTimer.checkAndReset()) {
+                startScan();
             }
-            return;
-        }
-        if (scanTimer.checkAndReset()) {
-            startScan();
+        } else {
+            if (scanOnTimer.checkAndReset()) {
+                stopScan();
+            }
         }
     }
 
-    String getState() override { return isScanning ? String("SCANNING") : String("IDLE"); }
-
-    void onScanComplete(BLEScanResults results) {      
-        processScanResults(results);
-        pBLEScan->clearResults();
-        isScanning = false;
-        scanTimer.reset();
-    }
-    
-    // Get the latest scan results
-    const BLEScanResult& getLatestScanResult() const { return latestScanResult; }
-    
-    // Check if a specific beacon was detected in the latest scan
-    bool isBeaconDetected(const String& beaconId) const {
-        return latestScanResult.beacons.find(beaconId) != latestScanResult.beacons.end();
-    }
-    
-    // Get RSSI for a specific beacon (returns 0 if not detected)
-    int getBeaconRSSI(const String& beaconId) const {
-        auto it = latestScanResult.beacons.find(beaconId);
-        return (it != latestScanResult.beacons.end()) ? it->second.rssi : 0;
+    void onScanComplete(BLEScanResults results) {
+        Serial.printf("Scan complete! Found %d devices.\n", results.getCount());
     }
 
 private:
     void startScan() {
-        isScanning = true;
-        lastScanStartMs = millis();
-        pBLEScan->start(SCAN_DURATION, scanCompleteCallback);
+        Serial.println("Starting BLE scan...");
+        if (scanning) return;
+        // duration=0 -> indefinite scan; we'll stop manually with timers
+        pBLEScan->start(0, nullptr, false);
+        scanning = true;
+        scanOnTimer.reset();
     }
-    
-    void processScanResults(BLEScanResults results) {
-        latestScanResult.beacons.clear();
-        latestScanResult.scanTimestamp = millis();
-        
-        // Get configured beacon identifiers
-        String beaconNE = configuration.getBeaconNE();
-        String beaconNW = configuration.getBeaconNW();
-        String beaconSE = configuration.getBeaconSE();
-        String beaconSW = configuration.getBeaconSW();
-        
-        // Process each discovered device
-        for (int i = 0; i < results.getCount(); i++) {
-            BLEAdvertisedDevice device = results.getDevice(i);
-            String deviceName = device.getName().c_str();
-            String deviceAddress = device.getAddress().toString().c_str();
-            int rssi = device.getRSSI();
-            
-            // Check if this device matches any of our configured beacons
-            String beaconId = "";
-            if (deviceName == beaconNE) {
-                beaconId = "NE";
-            } else if (deviceName == beaconNW) {
-                beaconId = "NW";
-            } else if (deviceName == beaconSE) {
-                beaconId = "SE";
-            } else if (deviceName == beaconSW) {
-                beaconId = "SW";
-            }
-            
-            // If we found a matching beacon, store its data
-            if (beaconId.length() > 0) {
-                latestScanResult.beacons[beaconId] = BeaconData(beaconId, rssi, deviceAddress, latestScanResult.scanTimestamp);
-                Serial.print("Found beacon ");
-                Serial.print(beaconId);
-                Serial.print(" (");
-                Serial.print(deviceName);
-                Serial.print(") RSSI: ");
-                Serial.println(rssi);
-            }
-        }
-        
-        // Log summary of detected beacons
-        Serial.print("Scan complete. Detected ");
-        Serial.print(latestScanResult.beacons.size());
-        Serial.println(" beacons.");
+
+    void stopScan() {
+        if (!scanning) return;
+        Serial.println("Stopping BLE scan...");
+        pBLEScan->stop();
+        scanning = false;
+        // Optionally emit completion behavior similar to callback
+        onScanComplete(pBLEScan->getResults());
+        scanOffTimer.reset();
     }
-    
-    Timer scanTimer;
+
+    Timer scanOnTimer;   // how long to scan (ms)
+    Timer scanOffTimer;  // gap between scans (ms)
     BLEScan* pBLEScan;
-    bool isScanning;
-    uint32_t lastScanStartMs;
-    BLEScanResult latestScanResult;
-    
+    bool scanning;
 };
 
 // Define the callback function to pass to the BLE scanner
 inline void scanCompleteCallback(BLEScanResults results) {
-    if (g_bleProcess) {
-        g_bleProcess->onScanComplete(results);
+    if (g_BLEProcess) {
+        g_BLEProcess->onScanComplete(results);
     }
 }
 
-#endif // BLE_Process_H 
+#endif // BLE_PROCESS_H 
