@@ -21,6 +21,8 @@ public:
         configurationMode(false),
         configTimeout(0) {}
     
+    bool isInConfigurationMode() const { return configurationMode; }
+    
     void setup() override {
         pinMode(bootButtonPin, INPUT_PULLUP);
         lastButtonState = digitalRead(bootButtonPin);
