@@ -1,4 +1,25 @@
-class PartialPhysicsWithGlow extends GameState {
+// Minimal sound loader that works with or without p5.sound
+function _safeLoadSound(path, onLoad) {
+  try {
+    if (typeof window !== 'undefined' && typeof window.loadSound === 'function') {
+      // p5.sound is present – use it
+      return window.loadSound(path, onLoad);
+    }
+  } catch(_) {}
+  // Fallback: HTMLAudioElement shim with a tiny p5-like API we use later
+  const audio = new Audio(path);
+  // ensure callbacks fire once it's ready enough to play
+  const ready = () => { if (onLoad) onLoad(); };
+  audio.addEventListener('canplaythrough', ready, { once: true });
+  // p5-like helpers used in the scene
+  audio.isLoaded = () => true;
+  audio.isPlaying = () => !audio.paused;
+  audio.setLoop = (b) => { audio.loop = !!b; };
+  audio.setVolume = (v) => { audio.volume = Math.max(0, Math.min(1, v ?? 1)); };
+  audio.loop = () => { audio.play().catch(()=>{}); };
+  return audio;
+}
+class PartialPhysicsWithGlowScene extends Scene {
   constructor(...a) {
     super(...a);
     this.dotSize = 4;
@@ -62,14 +83,14 @@ class PartialPhysicsWithGlow extends GameState {
     this.starCap = width * 9;
     this.stars = new Array(this.starCap);
 
-    // Load background sound (requires p5.sound)
-    
-      this.bgSound = loadSound("./sounds/rain.mp3", () => {
-        this.bgSound.setLoop(true);
-        this.bgSound.setVolume(this.bgVol);
-        this._startBg();
-      });
-    
+    // Load background sound (works with or without p5.sound)
+    this.bgSound = _safeLoadSound("./sounds/rain.mp3", () => {
+      try {
+        if (this.bgSound && typeof this.bgSound.setLoop === 'function') this.bgSound.setLoop(true);
+        if (this.bgSound && typeof this.bgSound.setVolume === 'function') this.bgSound.setVolume(this.bgVol);
+      } catch(_) {}
+      this._startBg();
+    });
   }
 
   _resetStars() {
@@ -99,27 +120,37 @@ class PartialPhysicsWithGlow extends GameState {
   }
 
   _startBg(){
-    // Try to start immediately
+    // Try to resume WebAudio (if available)
     try{
       if (typeof getAudioContext === 'function') {
         const ctx = getAudioContext();
         if (ctx && ctx.state !== 'running') ctx.resume().catch(()=>{});
       }
     }catch(_){/* no-op */}
+
+    // Try to start immediately
     try{
-      if (this.bgSound && this.bgSound.isLoaded() && !this.bgSound.isPlaying()) {
-        this.bgSound.loop();
-        this.bgSound.setVolume(this.bgVol);
+      if (this.bgSound && typeof this.bgSound.isLoaded === 'function' && !this.bgSound.isPlaying()) {
+        if (typeof this.bgSound.loop === 'function') this.bgSound.loop();
+        if (typeof this.bgSound.setVolume === 'function') this.bgSound.setVolume(this.bgVol);
+      } else if (this.bgSound && this.bgSound instanceof Audio && this.bgSound.paused) {
+        this.bgSound.loop = true;
+        this.bgSound.volume = this.bgVol;
+        this.bgSound.play().catch(()=>{});
       }
     }catch(_){/* no-op */}
 
-    // Also start on ANY user action (not tied to key '1')
+    // Also start on ANY user action (helps with autoplay policies)
     const startOnce = () => {
-      if (typeof userStartAudio === 'function') userStartAudio();
+      try{ if (typeof userStartAudio === 'function') userStartAudio(); }catch(_){/* no-op */}
       try{
-        if (this.bgSound && this.bgSound.isLoaded() && !this.bgSound.isPlaying()){
-          this.bgSound.loop();
-          this.bgSound.setVolume(this.bgVol);
+        if (this.bgSound && typeof this.bgSound.isLoaded === 'function' && !this.bgSound.isPlaying()){
+          if (typeof this.bgSound.loop === 'function') this.bgSound.loop();
+          if (typeof this.bgSound.setVolume === 'function') this.bgSound.setVolume(this.bgVol);
+        } else if (this.bgSound && this.bgSound instanceof Audio && this.bgSound.paused){
+          this.bgSound.loop = true;
+          this.bgSound.volume = this.bgVol;
+          this.bgSound.play().catch(()=>{});
         }
       }catch(_){/* no-op */}
       window.removeEventListener('pointerdown', startOnce);

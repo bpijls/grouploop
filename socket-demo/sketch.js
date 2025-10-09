@@ -1,14 +1,14 @@
 // Create device manager instance
 const deviceManager = new HitloopDeviceManager('ws://feib.nl:5003');
-const gameStateManager = new GameStateManager(deviceManager);
+const gameStateManager = new SceneManager(deviceManager);
 
 // Register example game states
-// gameStateManager.addState('list', new StateDevicesList(deviceManager));
-// gameStateManager.addState('first', new StateFirstDeviceDetails(deviceManager));
-// gameStateManager.addState('heatmap', new StateGridHeatmap(deviceManager));
-gameStateManager.addState('circles', new StateDeviceCircles(deviceManager));
-gameStateManager.addState('physics', new PartialPhysics(deviceManager));
-gameStateManager.addState('physicsWithGlow', new PartialPhysicsWithGlow(deviceManager));
+// gameStateManager.addScene('list', new DeviceListScene(deviceManager));
+// gameStateManager.addScene('first', new FirstDeviceDetailsScene(deviceManager));
+// gameStateManager.addScene('heatmap', new GridHeatmapScene(deviceManager));
+// gameStateManager.addScene('circles', new StateDeviceCirclesScene(deviceManager));
+// gameStateManager.addScene('physics', new PartialPhysicsScene(deviceManager));
+gameStateManager.addScene('physicsWithGlow', new PartialPhysicsWithGlowScene(deviceManager));
 
 function setup() {
     createCanvas(windowWidth, windowHeight);
@@ -25,9 +25,9 @@ function draw() {
 
 function keyPressed() {
     if (keyCode === RIGHT_ARROW) {
-        gameStateManager.nextState();
+        gameStateManager.nextScene();
     } else if (keyCode === LEFT_ARROW) {
-        gameStateManager.previousState();
+        gameStateManager.previousScene();
     }
 }
 

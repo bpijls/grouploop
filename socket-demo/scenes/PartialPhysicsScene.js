@@ -1,4 +1,4 @@
-class PartialPhysics extends GameState {
+class PartialPhysicsScene extends Scene {
   constructor(...a){ 
     super(...a);
     this.targets=[]; this.parts=[]; this.play=false; this._k1=false;

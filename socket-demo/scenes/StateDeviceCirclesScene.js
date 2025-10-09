@@ -1,4 +1,4 @@
-class StateDeviceCircles extends GameState {
+class StateDeviceCirclesScene extends Scene {
     constructor(...a){ super(...a);
       this.targets=[]; this.parts=[]; this.play=false;
       this.mode='default'; this._k1=false;

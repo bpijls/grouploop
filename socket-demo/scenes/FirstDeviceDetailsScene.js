@@ -1,4 +1,4 @@
-class StateFirstDeviceDetails extends GameState {
+class FirstDeviceDetailsScene extends Scene {
     setup() {}
     draw() {
         background(220);
@@ -13,5 +13,6 @@ class StateFirstDeviceDetails extends GameState {
         text(`Distances: NW:${data.dNW} NE:${data.dNE} SW:${data.dSW} SE:${data.dSE}`, 10, 80);
     }
 }
+
 
 

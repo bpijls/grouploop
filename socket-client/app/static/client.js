@@ -1,69 +1,27 @@
-let ws = null;
-let isConnected = false;
-let devices = {}; // deviceId -> {ax, ay, az, d1, d2, d3, d4, raw}
-let deviceOrder = []; // stable order for rendering
+let manager = null;
+
+function ensureManager(url) {
+  if (!manager || manager.websocketUrl !== url) {
+    manager = new HitloopDeviceManager(url);
+  }
+  return manager;
+}
 
 function connect(url) {
-  if (ws) {
-    try { ws.close(); } catch (_) {}
-    ws = null;
+  const m = ensureManager(url);
+  try {
+    setStatus('connecting…');
+    m.connect();
+  } catch (_e) {
+    setStatus('error');
   }
-  devices = {}; deviceOrder = [];
+}
 
-  ws = new WebSocket(url);
-  ws.onopen = () => {
-    isConnected = true;
-    setStatus(`connected to ${url}`);
-    // subscribe to stream
-    ws.send('s');
-  };
-  ws.onmessage = (ev) => {
-    const text = String(ev.data || '').trim();
-    if (!text) return;
-    
-    // Allow multiple frames per message (newline-delimited)
-    const frames = text.split(/\n+/).filter(Boolean);
-    for (const frame of frames) {        
-      // New hex format: ID(2 bytes=4 hex) + ax(1) + ay(1) + az(1) + dTL(1) + dTR(1) + dBR(1) + dBL(1)
-      // Total 18 hex chars
-      const hex = frame.toLowerCase();
-      const isHex = /^[0-9a-f]+$/.test(hex) && (hex.length === 18);
-      if (isHex) {
-        const id = hex.slice(0, 4); // keep device ID as hex string
-        const axB = parseInt(hex.slice(4, 6), 16);
-        const ayB = parseInt(hex.slice(6, 8), 16);
-        const azB = parseInt(hex.slice(8, 10), 16);
-        const d1 = parseInt(hex.slice(10, 12), 16);
-        const d2 = parseInt(hex.slice(12, 14), 16);
-        const d3 = parseInt(hex.slice(14, 16), 16);
-        const d4 = parseInt(hex.slice(16, 18), 16);
-
-        // Map 0..255 -> -2..2 g for accel display
-        const ax = (axB / 255) * 4 - 2;
-        const ay = (ayB / 255) * 4 - 2;
-        const az = (azB / 255) * 4 - 2;
-
-        if (!devices[id]) {
-          devices[id] = { ax: 0, ay: 0, az: 0, d1: 0, d2: 0, d3: 0, d4: 0, raw: '' };
-          deviceOrder.push(id);
-        }
-        devices[id].ax = ax;
-        devices[id].ay = ay;
-        devices[id].az = az;
-        devices[id].d1 = d1;
-        devices[id].d2 = d2;
-        devices[id].d3 = d3;
-        devices[id].d4 = d4;
-        devices[id].raw = hex;
-        continue;
-      }
-      else
-        console.log("non hex");
-      // Ignore any non-hex payloads
-    }
-  };
-  ws.onclose = () => { isConnected = false; setStatus('disconnected'); };
-  ws.onerror = () => { setStatus('error'); };
+function disconnect() {
+  if (manager) {
+    manager.disconnect();
+  }
+  setStatus('disconnected');
 }
 
 function setStatus(text) {
@@ -97,34 +55,56 @@ function draw() {
   const cols = max(1, floor((width - padding*2 + gap) / (cellW + gap)));
 
   let i = 0;
-  for (const id of deviceOrder) {
-    const r = floor(i / cols);
-    const c = i % cols;
-    const x = padding + c * (cellW + gap);
-    const y = padding + r * (cellH + gap);
-    drawDeviceCell(id, x, y, cellW, cellH);
-    i++;
+  if (manager) {
+    // update status once per frame based on manager connection state
+    const ws = manager.ws;
+    const ready = ws && ws.readyState === WebSocket.OPEN;
+    if (ready) {
+      setStatus(`connected • devices: ${manager.getDeviceCount()}`);
+    } else {
+      setStatus('disconnected');
+    }
+
+    for (const [id, device] of manager.getAllDevices()) {
+      const r = floor(i / cols);
+      const c = i % cols;
+      const x = padding + c * (cellW + gap);
+      const y = padding + r * (cellH + gap);
+      drawDeviceCell(device, x, y, cellW, cellH);
+      i++;
+    }
   }
 
-  if (!isConnected) {
+  const isReady = manager && manager.ws && manager.ws.readyState === WebSocket.OPEN;
+  if (!isReady) {
     fill(120); noStroke(); textSize(14);
     text('Enter WS URL (e.g., ws://localhost:5003/) and Connect. Frames: 18-char hex (id+ax+ay+az+d1..d4).', padding, height - padding);
   }
 }
 
-function drawDeviceCell(id, x, y, w, h) {
+function drawDeviceCell(device, x, y, w, h) {
   stroke(220); fill(255);
   rect(x, y, w, h, 8);
 
   // header: device ID
   fill(30); noStroke(); textSize(16);
   textAlign(LEFT, BASELINE);
-  text(id, x + 12, y + 22);
+  const data = device.getSensorData();
+  text(data.id, x + 12, y + 22);
 
-  const d = devices[id];
   // 7 bars: ax, ay, az, d1, d2, d3, d4
   const labels = ['ax', 'ay', 'az', 'd1', 'd2', 'd3', 'd4'];
-  const values = [d.ax, d.ay, d.az, d.d1, d.d2, d.d3, d.d4];
+  // Map device fields to legacy order: d1=dNW, d2=dNE, d3=dSE, d4=dSW
+  const values = [
+    // accelerometer: convert 0..255 into roughly -2..2 range like previous UI
+    (data.ax / 255) * 4 - 2,
+    (data.ay / 255) * 4 - 2,
+    (data.az / 255) * 4 - 2,
+    data.dNW,
+    data.dNE,
+    data.dSE,
+    data.dSW
+  ];
   // Accelerometer colors (R,G,B) + beacon distance colors (cyan, magenta, yellow, orange)
   const colorsArr = [
     color(239,68,68),   // ax - red
@@ -175,6 +155,7 @@ function drawDeviceCell(id, x, y, w, h) {
 
   // raw frame
   fill(80); noStroke(); textSize(12); textAlign(LEFT, BASELINE);
-  const rawText = d.raw || '';
+  // Manager normalizes data, raw frame not tracked; show summarized values
+  const rawText = `ax:${Math.round(values[0]*100)/100} ay:${Math.round(values[1]*100)/100} az:${Math.round(values[2]*100)/100}`;
   text(rawText, x + 12, y + h - 12);
 }

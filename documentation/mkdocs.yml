@@ -8,6 +8,8 @@ nav:
     - Overview: socket-demo/index.md
     - Classes: socket-demo/classes.md
     - How-to: socket-demo/howto.md
+  - Protocol:
+    - Overview: index.md#command-protocol-overview
 plugins:
   - search
   - mermaid2

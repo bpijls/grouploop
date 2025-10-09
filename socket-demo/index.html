@@ -8,21 +8,23 @@
 
     <link rel="stylesheet" type="text/css" href="style.css">
 
-    <script src="libraries/p5.min.js"></script>
-    <script src="libraries/p5.sound.min.js"></script>
+    <script src="http://cdn.hitloop.feib.nl/js/p5.min.js"></script>
+    <script src="http://cdn.hitloop.feib.nl/js/HitloopDevice.js"></script>
+    <script src="http://cdn.hitloop.feib.nl/js/HitloopDeviceManager.js"></script>
+
   </head>
 
   <body>
+    <script src="Scene.js"></script>
+    <script src="SceneManager.js"></script>
+    <script src="scenes/DeviceListScene.js"></script>
+    <script src="scenes/FirstDeviceDetailsScene.js"></script>
+    <script src="scenes/GridHeatmapScene.js"></script>
     <script src="HitloopDevice.js"></script>
     <script src="HitloopDeviceManager.js"></script>
-    <script src="GameState.js"></script>
-    <script src="GameStateManager.js"></script>
-    <script src="gamestates/StateDeviceCircles.js"></script>
-    <script src="gamestates/PartialPhysics.js"></script>
-    <script src="gamestates/PartialPhysicsWithGlow.js"></script>
-    <script src="gamestates/StateDevicesList.js"></script>
-    <script src="gamestates/StateFirstDeviceDetails.js"></script>
-    <script src="gamestates/StateGridHeatmap.js"></script>
+    <script src="scenes/StateDeviceCirclesScene.js"></script>
+    <script src="scenes/PartialPhysicsScene.js"></script>
+    <script src="scenes/PartialPhysicsWithGlowScene.js"></script>
     <script src="sketch.js"></script>
   </body>
 </html>

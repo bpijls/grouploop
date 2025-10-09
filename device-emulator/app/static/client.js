@@ -1,4 +1,4 @@
-/* globals createCanvas, windowWidth, windowHeight, WEBGL, background, fill, noStroke, stroke, strokeWeight, line, box, circle, rect, text, textAlign, CENTER, touchStarted, touchMoved, resetMatrix, translate, rotateX, rotateY, rotateZ, push, pop */
+/* globals createCanvas, windowWidth, windowHeight, WEBGL, background, fill, noStroke, stroke, strokeWeight, line, box, circle, rect, text, textAlign, CENTER, touchStarted, touchMoved, resetMatrix, translate, rotateX, rotateY, rotateZ, push, pop, preload, loadFont, textFont, textSize */
 
 let ws = null;
 let wsUrl = window.DEFAULT_WS_URL;
@@ -9,6 +9,8 @@ let circlePos = { x: 0, y: 0 };
 let draggingCircle = false;
 let rotatingCube = false;
 let lastMouse = { x: 0, y: 0 };
+
+let uiFont = null;
 
 // Cube orientation (radians)
 let rotX = 0; // pitch
@@ -86,9 +88,18 @@ function sendFrame() {
     ws.send(encodeFrame());
 }
 
+window.preload = function() {
+    // Load a web-safe TTF so WEBGL text rendering is enabled
+    uiFont = loadFont('https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxP.ttf');
+}
+
 window.setup = function() {
     const c = createCanvas(windowWidth, windowHeight, WEBGL);
     c.parent(document.getElementById('canvasWrap'));
+    if (uiFont) {
+        textFont(uiFont);
+    }
+    textSize(16);
     circlePos.x = width / 2;
     circlePos.y = height / 2;
     setupMotion();
@@ -155,7 +166,7 @@ function handleCirclePointer(x, y) {
 function startInteraction(x, y) {
     const dx = x - circlePos.x;
     const dy = y - circlePos.y;
-    const insideCircle = (dx*dx + dy*dy) <= (30*30);
+    const insideCircle = (dx*dx + dy*dy) <= (60*60);
     draggingCircle = insideCircle;
     rotatingCube = !insideCircle;
     lastMouse.x = x;
