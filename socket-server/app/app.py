@@ -123,7 +123,7 @@ async def handle_websocket_connection(websocket: WebSocketServerProtocol) -> Non
                 # Handle command messages: cmd:device_id:command
                 # e.g., "cmd:1234:led:ff0000" or "cmd:all:vibrate:1000"
                 try:
-                    parts = message[4:].split(":", 2)  # Remove "cmd:" and split into max 2 parts
+                    parts = message[4:].split(":", 1)  # Remove "cmd:" and split only on first colon
                     print(f"[DEBUG] Command parsing: '{message}' -> parts: {parts}", flush=True)
                     if len(parts) >= 2:
                         target = parts[0]  # device_id or "all"
