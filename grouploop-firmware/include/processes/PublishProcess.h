@@ -54,8 +54,11 @@ private:
 			dSE = mapRssiToByte(bleProcess->getBeaconRSSI("SE"));
 			dSW = mapRssiToByte(bleProcess->getBeaconRSSI("SW"));
 		}
+		// Tap detection
+		int tap = imuProcess ? (imuProcess->isTapped() ? 255 : 0) : 0;
+		
 		String frame;
-		frame.reserve(4 + 2*7 + 1);
+		frame.reserve(4 + 2*8 + 1); // Updated to account for tap byte
 		frame += deviceIdHex;
 		frame += toHexByte(ax);
 		frame += toHexByte(ay);
@@ -64,6 +67,7 @@ private:
 		frame += toHexByte(dNE);
 		frame += toHexByte(dSE);
 		frame += toHexByte(dSW);
+		frame += toHexByte(tap); // Tap detection: 0 if not tapped, 255 if tapped
 		frame += "\n";
 		return frame;
 	}

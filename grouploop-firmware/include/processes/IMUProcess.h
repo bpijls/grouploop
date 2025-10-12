@@ -10,6 +10,9 @@
 // Conversion factor from cm/s^2 to g. 1g = 980.665 cm/s^2
 #define CMS2_TO_G 0.0010197
 
+// Tap detection threshold in g (acceleration magnitude)
+#define TAP_THRESHOLD 3.0
+
 struct IMUData {
     float x_g;
     float y_g;
@@ -23,6 +26,7 @@ private:
     bool sensorOk = false;
 
     IMUData data;
+    bool tap = false;               // Tap detection flag
     
 public:
     IMUProcess() : 
@@ -52,12 +56,26 @@ public:
             // --- 1. Read and Convert Data ---            
             data.x_g = sensor.getX() * CMS2_TO_G;
             data.y_g = sensor.getY() * CMS2_TO_G;
-            data.z_g = sensor.getZ() * CMS2_TO_G;            
+            data.z_g = sensor.getZ() * CMS2_TO_G;
+            
+            // --- 2. Calculate acceleration magnitude ---
+            float magnitude = sqrt(data.x_g * data.x_g + data.y_g * data.y_g + data.z_g * data.z_g);
+            
+            // --- 3. Tap detection ---
+            if (magnitude > TAP_THRESHOLD) {
+                tap = true;
+            }
         }
     }
 
     IMUData getIMUData() const {
         return data;
+    }
+    
+    bool isTapped() {
+        bool wasTapped = tap;
+        tap = false;  // Reset tap flag after reading
+        return wasTapped;
     }
  
 };
