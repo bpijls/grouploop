@@ -10,6 +10,13 @@ let draggingCircle = false;
 let rotatingCube = false;
 let lastMouse = { x: 0, y: 0 };
 
+// Tap detection variables
+let tapState = false;
+let tapDuration = 0;
+let tapCooldown = 0;
+const TAP_DURATION_MS = 200; // How long tap stays active
+const TAP_COOLDOWN_MS = 100; // Minimum time between taps
+
 let uiFont = null;
 
 // Cube orientation (radians)
@@ -24,6 +31,18 @@ function toHexWord(n) { return clamp(Math.round(n), 0, 65535).toString(16).padSt
 function mapRange(v, inMin, inMax, outMin, outMax) {
     const t = (v - inMin) / (inMax - inMin);
     return outMin + (outMax - outMin) * t;
+}
+
+function triggerTap() {
+    const now = Date.now();
+    if (now - tapCooldown < TAP_COOLDOWN_MS) {
+        return; // Still in cooldown period
+    }
+    
+    tapState = true;
+    tapDuration = now;
+    tapCooldown = now;
+    console.log('Tap detected!');
 }
 
 function setupMotion() {
@@ -66,6 +85,12 @@ function connectWs() {
 
 let lastFrame = '';
 function encodeFrame() {
+    // Update tap state - check if tap duration has expired
+    const now = Date.now();
+    if (tapState && (now - tapDuration) > TAP_DURATION_MS) {
+        tapState = false;
+    }
+    
     // Distances from circle to 4 screen corners mapped to 0..255 (near=255, far=0)
     const corners = [
         { x: 0, y: 0 }, // TL -> dNW
@@ -79,7 +104,8 @@ function encodeFrame() {
         return clamp(Math.round(mapRange(d, 0, maxDist, 255, 0)), 0, 255);
     });
     const idHex = deviceId;
-    lastFrame = `${idHex}${toHexByte(acc.ax)}${toHexByte(acc.ay)}${toHexByte(acc.az)}${toHexByte(ds[0])}${toHexByte(ds[1])}${toHexByte(ds[2])}${toHexByte(ds[3])}`.toLowerCase();
+    const tapByte = tapState ? 255 : 0; // 255 = tapped, 0 = not tapped
+    lastFrame = `${idHex}${toHexByte(acc.ax)}${toHexByte(acc.ay)}${toHexByte(acc.az)}${toHexByte(ds[0])}${toHexByte(ds[1])}${toHexByte(ds[2])}${toHexByte(ds[3])}${toHexByte(tapByte)}`.toLowerCase();
     return `${lastFrame}\n`;
 }
 
@@ -146,14 +172,25 @@ window.draw = function() {
     fill(255, 165, 0); rect(0, height - sz, sz, sz); // BL orange
 
     const mapAccel = (v) => clamp(Math.round(mapRange(mapRange(v, 0, 255, -2, 2), -1, 1, 0, 255)), 0, 255);
-    fill(mapAccel(acc.ax), mapAccel(acc.ay), mapAccel(acc.az));
-    noStroke();
+    
+    // Draw circle with tap feedback
+    if (tapState) {
+        // Flash white when tapped
+        fill(255, 255, 255);
+        stroke(255, 0, 0);
+        strokeWeight(3);
+    } else {
+        fill(mapAccel(acc.ax), mapAccel(acc.ay), mapAccel(acc.az));
+        noStroke();
+    }
     circle(circlePos.x, circlePos.y, 60);
 
     fill(255);
     textAlign(CENTER);
     const status = ws ? (ws.readyState === WebSocket.OPEN ? 'connected' : (ws.readyState === WebSocket.CONNECTING ? 'connecting' : 'disconnected')) : 'disconnected';
-    text(`status: ${status}  ws:${wsUrl}`, width/2, height - 24);
+    const tapStatus = tapState ? 'TAPPED!' : 'tap: click circle or press T/SPACE';
+    text(`status: ${status}  ws:${wsUrl}`, width/2, height - 36);
+    text(`tap: ${tapStatus}`, width/2, height - 18);
     text(lastFrame || '', width/2, height - 6);
     pop();
 }
@@ -167,6 +204,12 @@ function startInteraction(x, y) {
     const dx = x - circlePos.x;
     const dy = y - circlePos.y;
     const insideCircle = (dx*dx + dy*dy) <= (60*60);
+    
+    // Check for tap (quick interaction inside circle)
+    if (insideCircle) {
+        triggerTap();
+    }
+    
     draggingCircle = insideCircle;
     rotatingCube = !insideCircle;
     lastMouse.x = x;
@@ -198,5 +241,12 @@ window.mouseReleased = function() { endInteraction(); }
 window.touchStarted = function(e) { if (e.touches && e.touches[0]) startInteraction(e.touches[0].clientX, e.touches[0].clientY); return false; }
 window.touchMoved = function(e) { if (e.touches && e.touches[0]) continueInteraction(e.touches[0].clientX, e.touches[0].clientY); return false; }
 window.touchEnded = function() { endInteraction(); }
+
+// Keyboard support for tap detection
+window.keyPressed = function() {
+    if (key === ' ' || key === 't' || key === 'T') {
+        triggerTap();
+    }
+}
 
 
