@@ -32,12 +32,11 @@ async def broadcast_to_subscribers(message: str) -> None:
         for ws in stale:
             subscribers.discard(ws)
 
-async def send_to_device(device_id: str, message: str) -> bool:
+async def send_to_device(device_id: str, message: str, parameters: str = "") -> bool:
     """Send a message to a specific device by device ID"""
     if device_id in devices:
         try:
-            print(f"[DEBUG] Sending to device {device_id}: '{message}' (length: {len(message)})", flush=True)
-            await devices[device_id].send(message)
+            await devices[device_id].send(message + ":" + parameters)
             print(f"[SEND] {device_id}: {message}", flush=True)
             return True
         except Exception as e:
@@ -49,7 +48,7 @@ async def send_to_device(device_id: str, message: str) -> bool:
         print(f"[ERROR] Device {device_id} not found", flush=True)
         return False
 
-async def send_to_all_devices(message: str) -> int:
+async def send_to_all_devices(message: str, parameters: str = "") -> int:
     """Send a message to all connected devices"""
     if not devices:
         return 0
@@ -59,7 +58,7 @@ async def send_to_all_devices(message: str) -> int:
     
     for device_id, ws in devices.items():
         try:
-            await ws.send(message)
+            await ws.send(message + ":" + parameters)
             sent_count += 1
             print(f"[BROADCAST] {device_id}: {message}", flush=True)
         except Exception as e:
@@ -72,30 +71,7 @@ async def send_to_all_devices(message: str) -> int:
     
     return sent_count
 
-# Utility functions for common device commands
-async def set_device_led(device_id: str, color: str) -> bool:
-    """Set LED color for a specific device"""
-    return await send_to_device(device_id, f"led:{color}")
 
-async def set_all_devices_led(color: str) -> int:
-    """Set LED color for all devices"""
-    return await send_to_all_devices(f"led:{color}")
-
-async def vibrate_device(device_id: str, duration: int) -> bool:
-    """Vibrate a specific device for specified duration in ms"""
-    return await send_to_device(device_id, f"vibrate:{duration}")
-
-async def vibrate_all_devices(duration: int) -> int:
-    """Vibrate all devices for specified duration in ms"""
-    return await send_to_all_devices(f"vibrate:{duration}")
-
-async def get_device_status(device_id: str) -> bool:
-    """Request status from a specific device"""
-    return await send_to_device(device_id, "status")
-
-async def get_all_devices_status() -> int:
-    """Request status from all devices"""
-    return await send_to_all_devices("status")
 
 async def handle_websocket_connection(websocket: WebSocketServerProtocol) -> None:
     try:
@@ -123,18 +99,17 @@ async def handle_websocket_connection(websocket: WebSocketServerProtocol) -> Non
                 # Handle command messages: cmd:device_id:command
                 # e.g., "cmd:1234:led:ff0000" or "cmd:all:vibrate:1000"
                 try:
-                    parts = message[4:].split(":", 1)  # Remove "cmd:" and split only on first colon
-                    print(f"[DEBUG] Command parsing: '{message}' -> parts: {parts}", flush=True)
+                    parts = message[4:].split(":", 2)  # Remove "cmd:" and split
                     if len(parts) >= 2:
                         target = parts[0]  # device_id or "all"
-                        command = parts[1]  # the actual command (includes parameters)
-                        print(f"[DEBUG] Target: '{target}', Command: '{command}'", flush=True)
+                        command = parts[1]  # the actual command
+                        parameters = parts[2] if len(parts) > 2 else ""
                         
                         if target == "all":
-                            sent_count = await send_to_all_devices(command)
+                            sent_count = await send_to_all_devices(command, parameters)
                             await websocket.send(f"cmd:result:sent_to_{sent_count}_devices")
                         else:
-                            success = await send_to_device(target, command)
+                            success = await send_to_device(target, command, parameters)
                             await websocket.send(f"cmd:result:{'success' if success else 'failed'}")
                     else:
                         await websocket.send("cmd:error:invalid_format")
