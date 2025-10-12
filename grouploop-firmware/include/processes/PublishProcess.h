@@ -7,7 +7,7 @@
 #include "Configuration.h"
 #include "processes/BLEProcess.h"
 #include "processes/IMUProcess.h"
-#include <WebSocketsClient.h>
+#include "WebSocketManager.h"
 #include <WiFi.h>
 
 class PublishProcess : public Process {
@@ -16,12 +16,6 @@ private:
 	BLEProcess* bleProcess;
 	IMUProcess* imuProcess;
 	Timer publishTimer; // send interval
-	WebSocketsClient webSocket;
-	bool connected = false;
-	String wsHost;
-	int wsPort = 80;
-	String wsPath = "/";
-	String deviceIdHex;
 	String state;
 
 	static int clampInt(int v, int lo, int hi) { return v < lo ? lo : (v > hi ? hi : v); }
@@ -61,7 +55,7 @@ private:
 		
 		String frame;
 		frame.reserve(4 + 2*8 + 1); // Updated to account for tap byte
-		frame += deviceIdHex;
+		frame += webSocketManager.getDeviceId();
 		frame += toHexByte(ax);
 		frame += toHexByte(ay);
 		frame += toHexByte(az);
@@ -80,8 +74,6 @@ public:
 		, bleProcess(nullptr)
 		, imuProcess(nullptr)
 		, publishTimer(50) // 20 Hz
-		, connected(false)
-		, deviceIdHex("0000")
 		, state("DISCONNECTED")
 	{}
 
@@ -89,23 +81,18 @@ public:
 		// Find dependencies through ProcessManager
 		findDependencies();
 		
-		// Build a 16-bit device id from MAC last 2 bytes to match tests/sim
-		uint8_t mac[6];
-		WiFi.macAddress(mac);
-		char idBuf[5];
-		snprintf(idBuf, sizeof(idBuf), "%02X%02X", mac[4], mac[5]);
-		deviceIdHex = String(idBuf);
-		// Parse ws URL and connect
-		parseAndConnect(configuration.getSocketServerURL());
+		// Initialize the shared WebSocket connection
+		webSocketManager.initialize(configuration.getSocketServerURL());
 	}
 
 	void update() override {
-		webSocket.loop();
-		state = connected ? String("CONNECTED") : String("CONNECTING");
-		if (connected && publishTimer.checkAndReset()) {
-			String frame = buildFrame(); // mutable lvalue for sendTXT(String&)
-			Serial.println(frame);
-			webSocket.sendTXT(frame);
+		// Update the shared WebSocket connection
+		webSocketManager.update();
+		state = webSocketManager.getState();
+		
+		if (webSocketManager.isConnected() && publishTimer.checkAndReset()) {
+			String frame = buildFrame();
+			webSocketManager.sendMessage(frame);
 		}
 	}
 
@@ -125,31 +112,9 @@ public:
 		}
 	}
 
-	String getDeviceId() const { return deviceIdHex; }
+	String getDeviceId() const { return webSocketManager.getDeviceId(); }
 	String getState() const { return state; }
 
-private:
-	void parseAndConnect(const String &wsUrl) {
-		if (!wsUrl.startsWith("ws://")) return;
-		String rest = wsUrl.substring(5);
-		int slash = rest.indexOf('/');
-		String hostPort = slash >= 0 ? rest.substring(0, slash) : rest;
-		wsPath = slash >= 0 ? rest.substring(slash) : "/";
-		int colon = hostPort.indexOf(':');
-		if (colon >= 0) {
-			wsHost = hostPort.substring(0, colon);
-			wsPort = hostPort.substring(colon + 1).toInt();
-		} else {
-			wsHost = hostPort;
-			wsPort = 80;
-		}
-		webSocket.onEvent([this](WStype_t type, uint8_t * payload, size_t length) {
-			if (type == WStype_CONNECTED) connected = true;
-			else if (type == WStype_DISCONNECTED) connected = false;
-		});
-		webSocket.setReconnectInterval(5000);
-		webSocket.begin(wsHost.c_str(), wsPort, wsPath.c_str());
-	}
 };
 
 #endif // PUBLISH_PROCESS_H 
