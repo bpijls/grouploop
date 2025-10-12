@@ -1,6 +1,6 @@
 FROM python:3.11-slim
 
-WORKDIR /app
+WORKDIR /app 
 
 # Copy requirements first for better caching
 COPY app/requirements.txt .
@@ -17,4 +17,4 @@ ENV FLASK_APP=app.py
 ENV FLASK_ENV=production
 
 # Run the application
-CMD ["python", "app.py"]
+CMD ["flask", "run"]
