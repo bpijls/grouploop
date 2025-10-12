@@ -157,6 +157,12 @@ class HitloopDeviceManager {
         // Only now add the device
         device = new HitloopDevice(deviceIdHex);
         device.setWebSocket(this.ws);
+        
+        // Set commands config if available
+        if (this.commandsConfig) {
+            device.setCommandsConfig(this.commandsConfig);
+        }
+        
         this.devices.set(deviceIdHex, device);
         this.lastSeen.set(deviceIdHex, Date.now());
         // Update with the validated frame
