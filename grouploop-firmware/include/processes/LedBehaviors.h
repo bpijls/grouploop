@@ -63,7 +63,8 @@ public:
 class BreathingBehavior : public LedBehavior {
 public:
     uint32_t color;
-    BreathingBehavior(uint32_t color) : LedBehavior("Breathing"), color(color), updateTimer(1000 / 50) {} // 50Hz for smooth animation
+    uint32_t duration;
+    BreathingBehavior(uint32_t color, uint32_t duration) : LedBehavior("Breathing"), color(color), updateTimer(1000 / 50), duration(duration) {} // 50Hz for smooth animation
 
     void setup(Adafruit_NeoPixel& pixels) override {
         LedBehavior::setup(pixels);
@@ -72,7 +73,7 @@ public:
 
     void update() override {
         if (updateTimer.checkAndReset()) {
-            float sine_wave = sin(millis() * 2.0 * PI / 4000.0); // 4-second period
+            float sine_wave = sin(millis() * 2.0 * PI / duration); // 4-second period
             uint8_t brightness = (uint8_t)(((sine_wave + 1.0) / 2.0) * 255.0);
             pixels->fill(scaleColor(color, brightness));
             pixels->show();
@@ -242,5 +243,34 @@ private:
     Timer updateTimer;
     int currentPixel;
 };
+
+// --- Global LED Behavior Instances ---
+// These instances are available globally to any file that includes LedBehaviors.h
+
+// Basic behaviors
+extern LedsOffBehavior ledsOff;
+extern SolidBehavior ledsSolid;
+extern BreathingBehavior ledsBreathing;
+extern HeartBeatBehavior ledsHeartBeat;
+extern CycleBehavior ledsCycle;
+
+// Pre-configured common behaviors
+extern SolidBehavior ledsRed;
+extern SolidBehavior ledsGreen;
+extern SolidBehavior ledsBlue;
+extern SolidBehavior ledsWhite;
+extern SolidBehavior ledsYellow;
+extern SolidBehavior ledsCyan;
+extern SolidBehavior ledsMagenta;
+
+// Pre-configured breathing behaviors
+extern BreathingBehavior ledsBreathingRed;
+extern BreathingBehavior ledsBreathingGreen;
+extern BreathingBehavior ledsBreathingBlue;
+
+// Pre-configured heartbeat behaviors
+extern HeartBeatBehavior ledsHeartBeatRed;
+extern HeartBeatBehavior ledsHeartBeatGreen;
+extern HeartBeatBehavior ledsHeartBeatBlue;
 
 #endif // LED_BEHAVIORS_H 
