@@ -9,8 +9,8 @@
 #define WIFI_SEND_DELAY 3000
 #define SERIAL_BAUD_RATE 115200
 #define SETUP_DELAY 1000
-#define SCAN_DURATION 2 // Scan for 2 seconds
-#define SCAN_INTERVAL_MS (10000 - (SCAN_DURATION * 1000)) // Interval between scans
+#define SCAN_DURATION 1 // Scan for 2 seconds
+#define SCAN_INTERVAL_MS (5000 - (SCAN_DURATION * 1000)) // Interval between scans
 
 // The service UUID of the beacons to scan for
 #define BEACON_SERVICE_UUID "19b10000-e8f2-537e-4f6c-d104768a1214"
