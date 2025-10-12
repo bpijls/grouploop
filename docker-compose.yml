@@ -41,6 +41,17 @@ services:
     environment:
       PYTHONUNBUFFERED: 1
       <<: *cdn_env
+  device_control:
+    build:
+      context: ./device-control
+      dockerfile: Dockerfile
+    ports:
+      - "5009:5000" # Flask device control UI
+    volumes:
+      - ./device-control:/app
+    environment:
+      <<: [*ws_env, *cdn_env]
+      PYTHONUNBUFFERED: 1
   simulator:
     build:
       context: ./socket-simulator
