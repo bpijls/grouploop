@@ -8,6 +8,7 @@ class HitloopDevice {
         this.color = color;
         this.motorState = motorState;
         this.ws = null;
+        this.commandsConfig = null;
 
         // Parsed sensor values
         this.ax = 0;
@@ -106,6 +107,173 @@ class HitloopDevice {
             color: this.color,
             motorState: this.motorState
         };
+    }
+
+    /**
+     * Set the commands configuration from commands.json
+     * @param {Object} commandsConfig - The commands configuration object
+     */
+    setCommandsConfig(commandsConfig) {
+        this.commandsConfig = commandsConfig;
+    }
+
+    /**
+     * Validate command parameters based on commands.json schema
+     * @param {string} command - The command name
+     * @param {Array} params - The command parameters
+     * @returns {boolean} True if parameters are valid
+     */
+    validateCommand(command, params) {
+        if (!this.commandsConfig || !this.commandsConfig.commands[command]) {
+            console.warn(`Unknown command: ${command}`);
+            return false;
+        }
+
+        const commandConfig = this.commandsConfig.commands[command];
+        const expectedParamCount = commandConfig.parameters.length;
+        const actualParamCount = params.length;
+
+        if (actualParamCount !== expectedParamCount) {
+            console.warn(`Command '${command}' expects ${expectedParamCount} parameters, got ${actualParamCount}`);
+            return false;
+        }
+
+        // Additional validation for specific commands
+        switch (command) {
+            case 'brightness':
+                const brightness = parseInt(params[0]);
+                if (isNaN(brightness) || brightness < 0 || brightness > 255) {
+                    console.warn(`Invalid brightness value: ${params[0]}. Must be between 0 and 255.`);
+                    return false;
+                }
+                break;
+            case 'spring_param':
+                if (!/^[0-9a-fA-F]{6}$/.test(params[0])) {
+                    console.warn(`Invalid spring parameters: ${params[0]}. Must be 6 hex characters.`);
+                    return false;
+                }
+                break;
+            case 'vibrate':
+                const duration = parseInt(params[0]);
+                if (isNaN(duration) || duration < 0) {
+                    console.warn(`Invalid vibration duration: ${params[0]}. Must be positive.`);
+                    return false;
+                }
+                break;
+        }
+
+        return true;
+    }
+
+    /**
+     * Send a command to this device using unified command system
+     * @param {string} command - The command name
+     * @param {...any} params - The command parameters
+     * @returns {boolean} True if command was sent successfully
+     */
+    sendCommand(command, ...params) {
+        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+            console.warn(`Cannot send command to device ${this.id}: WebSocket not connected`);
+            return false;
+        }
+
+        // Validate command and parameters
+        if (!this.validateCommand(command, params)) {
+            return false;
+        }
+
+        try {
+            // Format: cmd:command:param1:param2:...
+            const commandString = `cmd:${command}:${params.join(':')}`;
+            this.ws.send(commandString);
+            console.log(`Sent command to device ${this.id}: ${commandString}`);
+            
+            // Update local state for certain commands
+            this.updateLocalState(command, params);
+            
+            return true;
+        } catch (error) {
+            console.error(`Failed to send command to device ${this.id}:`, error);
+            return false;
+        }
+    }
+
+    /**
+     * Update local device state based on sent commands
+     * @param {string} command - The command name
+     * @param {Array} params - The command parameters
+     */
+    updateLocalState(command, params) {
+        switch (command) {
+            case 'led':
+                this.color = this.parseColor(params[0]);
+                break;
+            case 'vibrate':
+                this.motorState = true;
+                const duration = parseInt(params[0]);
+                setTimeout(() => {
+                    this.motorState = false;
+                }, duration);
+                break;
+        }
+    }
+
+    /**
+     * Convenience method to send command with single parameter
+     * @param {string} command - The command name
+     * @param {string} param - The single parameter
+     * @returns {boolean} True if command was sent successfully
+     */
+    sendCommandWithParam(command, param) {
+        return this.sendCommand(command, param);
+    }
+
+    /**
+     * Convenience method to send command without parameters
+     * @param {string} command - The command name
+     * @returns {boolean} True if command was sent successfully
+     */
+    sendCommandNoParams(command) {
+        return this.sendCommand(command);
+    }
+
+    /**
+     * Parse color string to RGB array
+     * @param {string} color - Color string (hex or named)
+     * @returns {Array} RGB array [r, g, b]
+     */
+    parseColor(color) {
+        // Handle named colors
+        const namedColors = {
+            'red': [255, 0, 0],
+            'green': [0, 255, 0],
+            'blue': [0, 0, 255],
+            'white': [255, 255, 255],
+            'yellow': [255, 255, 0],
+            'cyan': [0, 255, 255],
+            'magenta': [255, 0, 255],
+            'orange': [255, 128, 0]
+        };
+
+        if (namedColors[color.toLowerCase()]) {
+            return namedColors[color.toLowerCase()];
+        }
+
+        // Handle hex colors
+        if (color.startsWith('#')) {
+            color = color.substring(1);
+        }
+
+        if (/^[0-9a-fA-F]{6}$/.test(color)) {
+            return [
+                parseInt(color.substring(0, 2), 16),
+                parseInt(color.substring(2, 4), 16),
+                parseInt(color.substring(4, 6), 16)
+            ];
+        }
+
+        // Default to white if invalid
+        return [255, 255, 255];
     }
 }
 
