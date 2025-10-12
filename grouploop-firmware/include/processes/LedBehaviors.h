@@ -19,7 +19,7 @@ public:
     virtual void update() = 0;
     virtual void updateParams() {}
     virtual void reset() {
-        updateTimer.reset();
+        updateTimer.resetMillis();
     }
 
     void setColor(uint32_t color) {
@@ -91,7 +91,7 @@ public:
 
     void update() override {
         if (updateTimer.checkAndReset()) {
-            float sine_wave = sin(millis() * 2.0 * PI / duration); // 4-second period
+            float sine_wave = sin(updateTimer.elapsed() * 2.0 * PI / duration); // 4-second period
             uint8_t brightness = (uint8_t)(((sine_wave + 1.0) / 2.0) * 255.0);
             pixels->fill(scaleColor(color, brightness));
             pixels->show();
@@ -120,7 +120,7 @@ public:
     void setup(Adafruit_NeoPixel& pixels) override {
         LedBehavior::setup(pixels);
         state = IDLE;
-        stateStartTime = millis();
+        stateStartTime = updateTimer.elapsed();
         currentStateDuration = pulse_interval;
         updateTimer.reset();
         this->pixels->clear();
@@ -130,7 +130,7 @@ public:
     void update() override {
         if (!updateTimer.checkAndReset()) return;
         
-        unsigned long currentTime = millis();
+        unsigned long currentTime = updateTimer.elapsed();
         unsigned long elapsed = currentTime - stateStartTime;
         
         switch (state) {
@@ -221,7 +221,7 @@ private:
 
     void startState(BeatState newState, unsigned long duration) {
         state = newState;
-        stateStartTime = millis();
+        stateStartTime = updateTimer.elapsed();
         currentStateDuration = duration;
     }
 
