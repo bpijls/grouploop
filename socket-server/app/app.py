@@ -2,6 +2,7 @@ import asyncio
 import json
 import os
 from typing import Optional, Set, Dict
+import aiohttp
 
 import websockets
 from websockets.server import WebSocketServerProtocol
@@ -9,6 +10,7 @@ from websockets.server import WebSocketServerProtocol
 subscribers: Set[WebSocketServerProtocol] = set()
 client_labels: Dict[WebSocketServerProtocol, str] = {}
 devices: Dict[str, WebSocketServerProtocol] = {}  # device_id -> websocket
+command_registry: Dict = {}  # Command definitions from CDN
 
 def default_label(ws: WebSocketServerProtocol) -> str:
     try:
@@ -16,6 +18,39 @@ def default_label(ws: WebSocketServerProtocol) -> str:
         return f"{host}:{port}"
     except Exception:
         return "unknown"
+
+async def load_commands():
+    """Load command definitions from CDN"""
+    global command_registry
+    cdn_url = os.environ.get("CDN_URL", "http://localhost:3000")
+    commands_url = f"{cdn_url}/commands.json"
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(commands_url) as response:
+                if response.status == 200:
+                    command_registry = await response.json()
+                    print(f"[COMMANDS] Loaded {len(command_registry.get('commands', {}))} commands from CDN", flush=True)
+                else:
+                    print(f"[COMMANDS] Failed to load commands: HTTP {response.status}", flush=True)
+                    # Fallback to default commands
+                    command_registry = {
+                        "commands": {
+                            "led": {"handler": "led", "parameters": ["color"], "description": "Set LED color"},
+                            "vibrate": {"handler": "vibrate", "parameters": ["duration"], "description": "Vibrate device"},
+                            "status": {"handler": "status", "parameters": [], "description": "Get device status"}
+                        }
+                    }
+    except Exception as e:
+        print(f"[COMMANDS] Error loading commands: {e}", flush=True)
+        # Fallback to default commands
+        command_registry = {
+            "commands": {
+                "led": {"handler": "led", "parameters": ["color"], "description": "Set LED color"},
+                "vibrate": {"handler": "vibrate", "parameters": ["duration"], "description": "Vibrate device"},
+                "status": {"handler": "status", "parameters": [], "description": "Get device status"}
+            }
+        }
 
 async def broadcast_to_subscribers(message: str) -> None:
     if not subscribers:
@@ -71,7 +106,27 @@ async def send_to_all_devices(message: str, parameters: str = "") -> int:
     
     return sent_count
 
-
+async def handle_command(target: str, command: str, parameters: str = "") -> tuple[bool, str]:
+    """Handle a command using the command registry"""
+    commands = command_registry.get("commands", {})
+    
+    if command not in commands:
+        return False, f"Unknown command: {command}"
+    
+    cmd_def = commands[command]
+    expected_params = cmd_def.get("parameters", [])
+    
+    # Validate parameters
+    if len(expected_params) > 0 and not parameters:
+        return False, f"Command {command} requires parameters: {expected_params}"
+    
+    # Send the command
+    if target == "all":
+        sent_count = await send_to_all_devices(command, parameters)
+        return True, f"sent_to_{sent_count}_devices"
+    else:
+        success = await send_to_device(target, command, parameters)
+        return True if success else False, "success" if success else "failed"
 
 async def handle_websocket_connection(websocket: WebSocketServerProtocol) -> None:
     try:
@@ -96,7 +151,7 @@ async def handle_websocket_connection(websocket: WebSocketServerProtocol) -> Non
                 subscribers.add(websocket)
                 await websocket.send("stream:on")
             elif isinstance(message, str) and message.startswith("cmd:"):
-                # Handle command messages: cmd:device_id:command
+                # Handle command messages: cmd:device_id:command:parameters
                 # e.g., "cmd:1234:led:ff0000" or "cmd:all:vibrate:1000"
                 try:
                     parts = message[4:].split(":", 2)  # Remove "cmd:" and split
@@ -105,12 +160,9 @@ async def handle_websocket_connection(websocket: WebSocketServerProtocol) -> Non
                         command = parts[1]  # the actual command
                         parameters = parts[2] if len(parts) > 2 else ""
                         
-                        if target == "all":
-                            sent_count = await send_to_all_devices(command, parameters)
-                            await websocket.send(f"cmd:result:sent_to_{sent_count}_devices")
-                        else:
-                            success = await send_to_device(target, command, parameters)
-                            await websocket.send(f"cmd:result:{'success' if success else 'failed'}")
+                        # Use the command registry to handle the command
+                        success, result = await handle_command(target, command, parameters)
+                        await websocket.send(f"cmd:result:{result}")
                     else:
                         await websocket.send("cmd:error:invalid_format")
                 except Exception as e:
@@ -150,6 +202,9 @@ async def handle_websocket_connection(websocket: WebSocketServerProtocol) -> Non
 
 
 async def start_websocket_server(host: str, port: int) -> None:
+    # Load commands from CDN on startup
+    await load_commands()
+    
     async with websockets.serve(handle_websocket_connection, host, port, ping_interval=20, ping_timeout=20):
         await asyncio.Future()  # run forever
 
