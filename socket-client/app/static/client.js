@@ -77,8 +77,8 @@ function windowResized() {
 function draw() {
   background(250);
   const padding = 16;
-  const cellW = 55;  // 220 / 4 = 55
-  const cellH = 40;  // 160 / 4 = 40
+  const cellW = 220;
+  const cellH = 160;
   const gap = 12;
   const cols = max(1, floor((width - padding*2 + gap) / (cellW + gap)));
 
@@ -118,10 +118,10 @@ function drawDeviceCell(device, x, y, w, h) {
   rect(x, y, w, h, 8);
 
   // header: device ID
-  fill(30); noStroke(); textSize(4);  // 16 / 4 = 4
+  fill(30); noStroke(); textSize(16);
   textAlign(LEFT, BASELINE);
   const data = device.getSensorData();
-  text(data.id, x + 3, y + 6);  // 12 / 4 = 3, 22 / 4 = 5.5, rounded to 6
+  text(data.id, x + 12, y + 22);
 
   // 8 bars: ax, ay, az, d1, d2, d3, d4, tap
   const labels = ['ax', 'ay', 'az', 'd1', 'd2', 'd3', 'd4', 'tap'];
@@ -150,13 +150,13 @@ function drawDeviceCell(device, x, y, w, h) {
     color(147,51,234)   // tap - purple
   ];
 
-  const plotX = x + 3;   // 12 / 4 = 3
-  const plotY = y + 9;   // 36 / 4 = 9
-  const plotW = w - 6;   // 24 / 4 = 6
-  const plotH = 22;      // 90 / 4 = 22.5, rounded to 22
+  const plotX = x + 12;
+  const plotY = y + 36;
+  const plotW = w - 24;
+  const plotH = 90;
 
-  const barW = 5;   // 20 / 4 = 5
-  const barGap = Math.max(2, Math.floor((plotW - 8*barW) / 7));  // 8 / 4 = 2
+  const barW = 20;
+  const barGap = Math.max(8, Math.floor((plotW - 8*barW) / 7));
   let bx = plotX;
 
   // Axes background
@@ -177,23 +177,23 @@ function drawDeviceCell(device, x, y, w, h) {
       // distances 0..255 scaled to 0..100 px
       hpx = constrain(map(v, 0, 255, 0, 100), 0, 100);
     }
-    stroke(200); line(bx - 3, plotY + plotH/2, bx + 3, plotY + plotH/2);  // 14 / 4 = 3.5, rounded to 3
+    stroke(200); line(bx - 14, plotY + plotH/2, bx + 14, plotY + plotH/2);
     noStroke(); fill(col);
     if (i <= 2) {
-      if (hpx >= 0) rect(bx - barW/2, plotY + plotH/2 - hpx, barW, hpx, 1);  // 4 / 4 = 1
-      else rect(bx - barW/2, plotY + plotH/2, barW, -hpx, 1);
+      if (hpx >= 0) rect(bx - barW/2, plotY + plotH/2 - hpx, barW, hpx, 4);
+      else rect(bx - barW/2, plotY + plotH/2, barW, -hpx, 4);
     } else {
       // distances and tap: always draw upward
-      rect(bx - barW/2, plotY + plotH/2 - hpx, barW, hpx, 1);
+      rect(bx - barW/2, plotY + plotH/2 - hpx, barW, hpx, 4);
     }
-    fill(60); textSize(3); noStroke(); textAlign(CENTER);  // 12 / 4 = 3
-    text(label, bx, plotY + plotH/2 + 4);  // 16 / 4 = 4
+    fill(60); textSize(12); noStroke(); textAlign(CENTER);
+    text(label, bx, plotY + plotH/2 + 16);
     bx += barW + barGap;
   }
 
   // raw frame
-  fill(80); noStroke(); textSize(3); textAlign(LEFT, BASELINE);  // 12 / 4 = 3
+  fill(80); noStroke(); textSize(12); textAlign(LEFT, BASELINE);
   // Manager normalizes data, raw frame not tracked; show summarized values
   const rawText = `ax:${Math.round(values[0]*100)/100} ay:${Math.round(values[1]*100)/100} az:${Math.round(values[2]*100)/100}`;
-  text(rawText, x + 3, y + h - 3);  // 12 / 4 = 3
+  text(rawText, x + 12, y + h - 12);
 }
