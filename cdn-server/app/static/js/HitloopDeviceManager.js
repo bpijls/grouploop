@@ -16,29 +16,39 @@ class HitloopDeviceManager {
      * Connect to the WebSocket server
      */
     connect() {
+        console.log(`[HitloopDeviceManager] Attempting to connect to: ${this.websocketUrl}`);
+        
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            console.log('[HitloopDeviceManager] Already connected, skipping connection attempt');
             return;
         }
 
+        console.log('[HitloopDeviceManager] Creating new WebSocket connection...');
         this.ws = new WebSocket(this.websocketUrl);
 
         this.ws.addEventListener('open', (event) => {
+            console.log('[HitloopDeviceManager] WebSocket connection opened successfully');
             // Send 's' to start receiving data
+            console.log('[HitloopDeviceManager] Sending start command: "s"');
             this.ws.send('s');
         });
 
         this.ws.addEventListener('message', (event) => {
+            console.log(`[HitloopDeviceManager] Received message: ${event.data}`);
             this.handleMessage(event.data);            
         });
 
         this.ws.addEventListener('close', (event) => {
+            console.log(`[HitloopDeviceManager] WebSocket connection closed. Code: ${event.code}, Reason: ${event.reason}`);
         });
 
         this.ws.addEventListener('error', (error) => {
+            console.error('[HitloopDeviceManager] WebSocket error:', error);
         });
 
         // Start periodic pruning of inactive devices
         if (!this.pruneInterval) {
+            console.log('[HitloopDeviceManager] Starting device pruning interval');
             this.pruneInterval = setInterval(() => {
                 this.pruneInactive();
             }, 1000);
@@ -49,13 +59,16 @@ class HitloopDeviceManager {
      * Disconnect from the WebSocket server
      */
     disconnect() {
+        console.log('[HitloopDeviceManager] Disconnecting from WebSocket server');
         if (this.ws) {
             this.ws.close();
             this.ws = null;
+            console.log('[HitloopDeviceManager] WebSocket connection closed');
         }
         if (this.pruneInterval) {
             clearInterval(this.pruneInterval);
             this.pruneInterval = null;
+            console.log('[HitloopDeviceManager] Device pruning interval stopped');
         }
     }
 
@@ -64,9 +77,11 @@ class HitloopDeviceManager {
      * @param {string} data - The received data
      */
     handleMessage(data) {
+        console.log(`[HitloopDeviceManager] Processing message with ${data.length} characters`);
         // Support batched frames separated by newlines
         const text = String(data || '');
         const frames = text.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+        console.log(`[HitloopDeviceManager] Split into ${frames.length} frames`);
         for (const frame of frames) {
             // Parse the HEX data and update the corresponding device
             this.parseAndUpdateDevice(frame);
