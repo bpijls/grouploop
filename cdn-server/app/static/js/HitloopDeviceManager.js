@@ -80,10 +80,10 @@ class HitloopDeviceManager {
      */
     parseAndUpdateDevice(hexString) {
         const raw = String(hexString || '').trim();
-        // Require at least 18 hex chars and valid charset before doing anything
-        if (raw.length < 18) return false;
-        const frame = raw.slice(0, 18);
-        if (!/^[0-9a-fA-F]{18}$/.test(frame)) return false;
+        // Require at least 20 hex chars and valid charset before doing anything (including tap byte)
+        if (raw.length < 20) return false;
+        const frame = raw.slice(0, 20);
+        if (!/^[0-9a-fA-F]{20}$/.test(frame)) return false;
 
         // Extract device ID from first 4 hex characters
         const deviceIdHex = frame.substring(0, 4).toLowerCase();
