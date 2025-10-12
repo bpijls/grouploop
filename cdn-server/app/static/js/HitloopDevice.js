@@ -184,7 +184,7 @@ class HitloopDevice {
 
         try {
             // Format: cmd:command:param1:param2:...
-            const commandString = `cmd:${command}:${this.id}:${params.join(':')}`;
+            const commandString = `cmd:${this.id}:${command}:${params.join(':')}`;
             this.ws.send(commandString);
             console.log(`Sent command to device ${this.id}: ${commandString}`);
             
