@@ -1,4 +1,5 @@
 let manager = null;
+let tapStates = new Map(); // Track tap visualization state for each device
 
 function ensureManager(url) {
   if (!manager || manager.websocketUrl !== url) {
@@ -29,6 +30,33 @@ function setStatus(text) {
   if (el) el.textContent = text;
 }
 
+function updateTapStates() {
+  if (!manager) return;
+  
+  for (const [id, device] of manager.getAllDevices()) {
+    const data = device.getSensorData();
+    const currentTap = data.tap;
+    
+    if (!tapStates.has(id)) {
+      tapStates.set(id, { active: false, frames: 0 });
+    }
+    
+    const tapState = tapStates.get(id);
+    
+    if (currentTap) {
+      // Tap detected, start showing for 5 frames
+      tapState.active = true;
+      tapState.frames = 5;
+    } else if (tapState.frames > 0) {
+      // Countdown frames
+      tapState.frames--;
+      if (tapState.frames === 0) {
+        tapState.active = false;
+      }
+    }
+  }
+}
+
 function setup() {
   const container = document.getElementById('canvas-container');
   const canvas = createCanvas(window.innerWidth, window.innerHeight - 42);
@@ -56,6 +84,9 @@ function draw() {
 
   let i = 0;
   if (manager) {
+    // Update tap states first
+    updateTapStates();
+    
     // update status once per frame based on manager connection state
     const ws = manager.ws;
     const ready = ws && ws.readyState === WebSocket.OPEN;
@@ -78,7 +109,7 @@ function draw() {
   const isReady = manager && manager.ws && manager.ws.readyState === WebSocket.OPEN;
   if (!isReady) {
     fill(120); noStroke(); textSize(14);
-    text('Enter WS URL (e.g., ws://localhost:5003/) and Connect. Frames: 18-char hex (id+ax+ay+az+d1..d4).', padding, height - padding);
+    text('Enter WS URL (e.g., ws://localhost:5003/) and Connect. Frames: 20-char hex (id+ax+ay+az+d1..d4+tap).', padding, height - padding);
   }
 }
 
@@ -92,8 +123,8 @@ function drawDeviceCell(device, x, y, w, h) {
   const data = device.getSensorData();
   text(data.id, x + 12, y + 22);
 
-  // 7 bars: ax, ay, az, d1, d2, d3, d4
-  const labels = ['ax', 'ay', 'az', 'd1', 'd2', 'd3', 'd4'];
+  // 8 bars: ax, ay, az, d1, d2, d3, d4, tap
+  const labels = ['ax', 'ay', 'az', 'd1', 'd2', 'd3', 'd4', 'tap'];
   // Map device fields to legacy order: d1=dNW, d2=dNE, d3=dSE, d4=dSW
   const values = [
     // accelerometer: convert 0..255 into roughly -2..2 range like previous UI
@@ -103,9 +134,11 @@ function drawDeviceCell(device, x, y, w, h) {
     data.dNW,
     data.dNE,
     data.dSE,
-    data.dSW
+    data.dSW,
+    // Tap detection: use tap state with 5-frame persistence
+    tapStates.has(data.id) && tapStates.get(data.id).active ? 100 : 0
   ];
-  // Accelerometer colors (R,G,B) + beacon distance colors (cyan, magenta, yellow, orange)
+  // Accelerometer colors (R,G,B) + beacon distance colors (cyan, magenta, yellow, orange) + tap (purple)
   const colorsArr = [
     color(239,68,68),   // ax - red
     color(34,197,94),   // ay - green
@@ -113,7 +146,8 @@ function drawDeviceCell(device, x, y, w, h) {
     color(0,255,255),   // d1 - cyan (top-left)
     color(255,0,255),   // d2 - magenta (top-right)
     color(255,255,0),   // d3 - yellow (bottom-right)
-    color(255,165,0)    // d4 - orange (bottom-left)
+    color(255,165,0),   // d4 - orange (bottom-left)
+    color(147,51,234)   // tap - purple
   ];
 
   const plotX = x + 12;
@@ -122,13 +156,13 @@ function drawDeviceCell(device, x, y, w, h) {
   const plotH = 90;
 
   const barW = 20;
-  const barGap = Math.max(8, Math.floor((plotW - 7*barW) / 6));
+  const barGap = Math.max(8, Math.floor((plotW - 8*barW) / 7));
   let bx = plotX;
 
   // Axes background
   stroke(230); line(plotX, plotY + plotH/2, plotX + plotW, plotY + plotH/2);
 
-  for (let i = 0; i < 7; i++) {
+  for (let i = 0; i < 8; i++) {
     const v = values[i];
     const col = colorsArr[i];
     const label = labels[i];
@@ -136,6 +170,9 @@ function drawDeviceCell(device, x, y, w, h) {
     if (i <= 2) {
       // accel -2..2 g scaled to -100..100 px
       hpx = constrain(v * 50, -100, 100);
+    } else if (i === 7) {
+      // tap detection: 0 or 100 scaled to 0..100 px
+      hpx = constrain(map(v, 0, 100, 0, 100), 0, 100);
     } else {
       // distances 0..255 scaled to 0..100 px
       hpx = constrain(map(v, 0, 255, 0, 100), 0, 100);
@@ -146,6 +183,7 @@ function drawDeviceCell(device, x, y, w, h) {
       if (hpx >= 0) rect(bx - barW/2, plotY + plotH/2 - hpx, barW, hpx, 4);
       else rect(bx - barW/2, plotY + plotH/2, barW, -hpx, 4);
     } else {
+      // distances and tap: always draw upward
       rect(bx - barW/2, plotY + plotH/2 - hpx, barW, hpx, 4);
     }
     fill(60); textSize(12); noStroke(); textAlign(CENTER);
