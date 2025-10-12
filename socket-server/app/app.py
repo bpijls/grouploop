@@ -36,6 +36,7 @@ async def send_to_device(device_id: str, message: str) -> bool:
     """Send a message to a specific device by device ID"""
     if device_id in devices:
         try:
+            print(f"[DEBUG] Sending to device {device_id}: '{message}' (length: {len(message)})", flush=True)
             await devices[device_id].send(message)
             print(f"[SEND] {device_id}: {message}", flush=True)
             return True
@@ -122,10 +123,12 @@ async def handle_websocket_connection(websocket: WebSocketServerProtocol) -> Non
                 # Handle command messages: cmd:device_id:command
                 # e.g., "cmd:1234:led:ff0000" or "cmd:all:vibrate:1000"
                 try:
-                    parts = message[4:].split(":", 2)  # Remove "cmd:" and split
+                    parts = message[4:].split(":", 2)  # Remove "cmd:" and split into max 2 parts
+                    print(f"[DEBUG] Command parsing: '{message}' -> parts: {parts}", flush=True)
                     if len(parts) >= 2:
                         target = parts[0]  # device_id or "all"
-                        command = parts[1]  # the actual command
+                        command = parts[1]  # the actual command (includes parameters)
+                        print(f"[DEBUG] Target: '{target}', Command: '{command}'", flush=True)
                         
                         if target == "all":
                             sent_count = await send_to_all_devices(command)
