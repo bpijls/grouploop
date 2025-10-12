@@ -64,7 +64,7 @@ async def handle_websocket_connection(websocket: WebSocketServerProtocol) -> Non
                         parts = [p for p in text.splitlines() if p]
                         for p in parts:
                             hp = p.strip()
-                            if len(hp) == 18 and all(c in '0123456789abcdefABCDEF' for c in hp):
+                            if len(hp) == 20 and all(c in '0123456789abcdefABCDEF' for c in hp):
                                 await broadcast_to_subscribers(hp.lower() + "\n")
                 except Exception:
                     pass
