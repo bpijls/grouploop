@@ -2,6 +2,7 @@
 #define PUBLISH_PROCESS_H
 
 #include "Process.h"
+#include "ProcessManager.h"
 #include "Timer.h"
 #include "Configuration.h"
 #include "processes/BLEProcess.h"
@@ -85,6 +86,9 @@ public:
 	{}
 
 	void setup() override {
+		// Find dependencies through ProcessManager
+		findDependencies();
+		
 		// Build a 16-bit device id from MAC last 2 bytes to match tests/sim
 		uint8_t mac[6];
 		WiFi.macAddress(mac);
@@ -100,16 +104,25 @@ public:
 		state = connected ? String("CONNECTED") : String("CONNECTING");
 		if (connected && publishTimer.checkAndReset()) {
 			String frame = buildFrame(); // mutable lvalue for sendTXT(String&)
+			Serial.println(frame);
 			webSocket.sendTXT(frame);
 		}
 	}
 
-	void setProcesses(std::map<String, Process*>* processes){
-		if (!processes) return;
-		auto itBle = processes->find("ble");
-		if (itBle != processes->end()) bleProcess = static_cast<BLEProcess*>(itBle->second);
-		auto itImu = processes->find("imu");
-		if (itImu != processes->end()) imuProcess = static_cast<IMUProcess*>(itImu->second);
+	void findDependencies() {
+		if (!processManager) return;
+		
+		// Find BLE process
+		Process* ble = processManager->getProcess("ble");
+		if (ble) {
+			bleProcess = static_cast<BLEProcess*>(ble);
+		}
+		
+		// Find IMU process
+		Process* imu = processManager->getProcess("imu");
+		if (imu) {
+			imuProcess = static_cast<IMUProcess*>(imu);
+		}
 	}
 
 	String getDeviceId() const { return deviceIdHex; }
