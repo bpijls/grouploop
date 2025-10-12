@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, jsonify
 import os
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder="static", template_folder="templates")
 
 # Configuration
 DEFAULT_WS_URL = os.environ.get('DEFAULT_WS_URL', 'ws://localhost:5003/')
