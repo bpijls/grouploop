@@ -49,10 +49,11 @@ private:
 		// BLE beacons
 		int dNE = 0, dNW = 0, dSE = 0, dSW = 0;
 		if (bleProcess) {
-			// dNE = mapRssiToByte(bleProcess->getBeaconRSSI("NE"));
-			// dNW = mapRssiToByte(bleProcess->getBeaconRSSI("NW"));
-			// dSE = mapRssiToByte(bleProcess->getBeaconRSSI("SE"));
-			// dSW = mapRssiToByte(bleProcess->getBeaconRSSI("SW"));
+			// Map RSSI dBm to 0..255 distances as per simulator expectations
+			dNW = mapRssiToByte(bleProcess->getBeaconRSSI("NW"));
+			dNE = mapRssiToByte(bleProcess->getBeaconRSSI("NE"));
+			dSE = mapRssiToByte(bleProcess->getBeaconRSSI("SE"));
+			dSW = mapRssiToByte(bleProcess->getBeaconRSSI("SW"));
 		}
 		String frame;
 		frame.reserve(4 + 2*7 + 1);
