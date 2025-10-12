@@ -23,7 +23,7 @@ Commands van de server uitvoeren.                         |
 
 
 // Global pointer for BLE callback
-BleProcess* g_bleProcess = nullptr;
+BLEProcess* g_BLEProcess = nullptr;
 
 // Global Configuration instance
 Configuration configuration;
@@ -32,7 +32,7 @@ Configuration configuration;
 LedProcess* ledProcess = nullptr;
 VibrationProcess* vibrationProcess = nullptr;
 IMUProcess* imuProcess = nullptr;
-BleProcess* bleProcess = nullptr;
+BLEProcess* bleProcess = nullptr;
 PublishProcess* publishProcess = nullptr;
 ConfigurationProcess* configurationProcess = nullptr;
 WiFiProcess* wifiProcess = nullptr;
@@ -66,7 +66,7 @@ void setup() {
   ledProcess = new LedProcess();
   vibrationProcess = new VibrationProcess();
   imuProcess = new IMUProcess();
-  bleProcess = new BleProcess();
+  bleProcess = new BLEProcess();
   publishProcess = new PublishProcess();
   configurationProcess = new ConfigurationProcess();
 

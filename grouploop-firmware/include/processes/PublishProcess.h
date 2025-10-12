@@ -12,7 +12,7 @@
 class PublishProcess : public Process {
 
 private:
-	BleProcess* bleProcess;
+	BLEProcess* bleProcess;
 	IMUProcess* imuProcess;
 	Timer publishTimer; // send interval
 	WebSocketsClient webSocket;
@@ -49,8 +49,9 @@ private:
 		// BLE beacons
 		int dNE = 0, dNW = 0, dSE = 0, dSW = 0;
 		if (bleProcess) {
-			dNE = mapRssiToByte(bleProcess->getBeaconRSSI("NE"));
+			// Map RSSI dBm to 0..255 distances as per simulator expectations
 			dNW = mapRssiToByte(bleProcess->getBeaconRSSI("NW"));
+			dNE = mapRssiToByte(bleProcess->getBeaconRSSI("NE"));
 			dSE = mapRssiToByte(bleProcess->getBeaconRSSI("SE"));
 			dSW = mapRssiToByte(bleProcess->getBeaconRSSI("SW"));
 		}
@@ -106,7 +107,7 @@ public:
 	void setProcesses(std::map<String, Process*>* processes){
 		if (!processes) return;
 		auto itBle = processes->find("ble");
-		if (itBle != processes->end()) bleProcess = static_cast<BleProcess*>(itBle->second);
+		if (itBle != processes->end()) bleProcess = static_cast<BLEProcess*>(itBle->second);
 		auto itImu = processes->find("imu");
 		if (itImu != processes->end()) imuProcess = static_cast<IMUProcess*>(itImu->second);
 	}

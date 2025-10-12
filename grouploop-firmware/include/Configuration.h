@@ -285,10 +285,10 @@ const String Configuration::DEFAULT_SOCKET_SERVER_URL = "ws://feib.nl:5003";
 const int Configuration::DEFAULT_LED_PIN = 3;
 const int Configuration::DEFAULT_MOTOR_PIN = 2;
 const String Configuration::DEFAULT_DEVICE_NAME_PREFIX = "HitloopScanner";
-const String Configuration::DEFAULT_BEACON_NE = "HitloopBeacon_NE";
-const String Configuration::DEFAULT_BEACON_NW = "HitloopBeacon_NW";
-const String Configuration::DEFAULT_BEACON_SE = "HitloopBeacon_SE";
-const String Configuration::DEFAULT_BEACON_SW = "HitloopBeacon_SW";
+const String Configuration::DEFAULT_BEACON_NE = "64:e8:33:84:43:9a";
+const String Configuration::DEFAULT_BEACON_NW = "64:e8:33:87:0d:62";
+const String Configuration::DEFAULT_BEACON_SE = "98:3d:ae:aa:16:8a";
+const String Configuration::DEFAULT_BEACON_SW = "98:3d:ae:ab:b2:7a";
 
 // Define NVS key names
 const char* Configuration::NVS_NAMESPACE = "config";
