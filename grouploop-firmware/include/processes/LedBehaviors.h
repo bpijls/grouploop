@@ -106,7 +106,7 @@ public:
     unsigned long pulse_duration;
     unsigned long pulse_interval;
 
-    HeartBeatBehavior(uint32_t color = 0, unsigned long duration = 770, unsigned long interval = 2000) 
+    HeartBeatBehavior(uint32_t color = 0xFF0000, unsigned long duration = 770, unsigned long interval = 2000) 
         : LedBehavior("HeartBeat"), 
           pulse_duration(duration), 
           pulse_interval(interval), 
@@ -260,6 +260,99 @@ private:
     int currentPixel;
 };
 
+// 5. SpringBehavior - Implements Hooke's law for LED brightness
+class SpringBehavior : public LedBehavior {
+public:
+    float targetBrightness;    // Target brightness (0.0 to 1.0)
+    float springConstant;      // Spring constant (k) - higher = stiffer spring
+    float damping;             // Damping factor (0.0 to 1.0) - higher = more damping
+    float mass;                // Mass of the spring system
+    
+    SpringBehavior(uint32_t color, float targetBrightness = 0.0f, float springConstant = 20.1f, float damping = 2.0f, float mass = 1.0f) 
+        : LedBehavior("Spring"), 
+          targetBrightness(targetBrightness),
+          springConstant(springConstant),
+          damping(damping),
+          mass(mass),
+          currentBrightness(1.0f),
+          velocity(0.0f),
+          lastUpdateTime(0) {
+        setColor(color);
+        setTimerInterval(16); // ~60Hz for smooth physics simulation
+    }
+
+    void setup(Adafruit_NeoPixel& pixels) override {
+        LedBehavior::setup(pixels);
+        updateTimer.reset();
+        currentBrightness = 1.0f;
+        velocity = 0.0f;
+        lastUpdateTime = 0;
+    }
+
+    void update() override {
+        if (updateTimer.checkAndReset()) {
+            unsigned long currentTime = updateTimer.elapsed();
+            if (lastUpdateTime == 0) {
+                lastUpdateTime = currentTime;
+                return;
+            }
+            
+            // Calculate delta time in seconds
+            float deltaTime = (currentTime - lastUpdateTime) / 1000.0f;
+            lastUpdateTime = currentTime;
+            
+            // Hooke's law: F = -k * x (where x is displacement from equilibrium)
+            float displacement = currentBrightness - targetBrightness;
+            float springForce = -springConstant * displacement;
+            
+            // Apply damping force (proportional to velocity)
+            float dampingForce = -damping * velocity;
+            
+            // Net force
+            float netForce = springForce + dampingForce;
+            
+            // Newton's second law: F = ma, so a = F/m
+            float acceleration = netForce / mass;
+            
+            // Update velocity and position using simple Euler integration
+            velocity += acceleration * deltaTime;
+            currentBrightness += velocity * deltaTime;
+            
+            // Clamp brightness to valid range
+            //currentBrightness = constrain(currentBrightness, 0.0f, 1.0f);
+            
+            // Convert to 8-bit brightness and apply to LEDs
+            uint8_t brightness = (uint8_t)(abs(currentBrightness) * 255.0f);
+            pixels->fill(scaleColor(color, brightness));
+            pixels->show();
+        }
+    }
+
+    void setTargetBrightness(float target) {
+        targetBrightness = constrain(target, 0.0f, 1.0f);
+    }
+
+    void setSpringParams(float k, float damp, float m) {
+        springConstant = k;
+        damping = damp;
+        mass = m;
+    }
+
+    void reset() override {
+        LedBehavior::reset();
+    
+        currentBrightness = 1.0f;
+        targetBrightness = 0.0f;
+        velocity = 0.0f;
+        lastUpdateTime = 0;
+    }
+
+private:
+    float currentBrightness;   // Current brightness (0.0 to 1.0)
+    float velocity;            // Current velocity of the spring
+    unsigned long lastUpdateTime; // Last update time for delta calculation
+};
+
 // --- Global LED Behavior Instances ---
 // These instances are available globally to any file that includes LedBehaviors.h
 
@@ -269,5 +362,6 @@ extern SolidBehavior ledsSolid;
 extern BreathingBehavior ledsBreathing;
 extern HeartBeatBehavior ledsHeartBeat;
 extern CycleBehavior ledsCycle;
+extern SpringBehavior ledsSpring;
 
 #endif // LED_BEHAVIORS_H 

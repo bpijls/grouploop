@@ -27,14 +27,20 @@
     "pattern": {
       "handler": "pattern",
       "parameters": ["pattern_name"],
-      "description": "Set LED pattern (breathing, heartbeat, cycle, off)",
-      "examples": ["pattern:breathing", "pattern:heartbeat", "pattern:off"]
+      "description": "Set LED pattern (breathing, heartbeat, cycle, spring, off)",
+      "examples": ["pattern:breathing", "pattern:heartbeat", "pattern:spring", "pattern:off"]
     },
     "reset": {
       "handler": "reset",
       "parameters": [],
       "description": "Reset LED pattern",
       "examples": ["reset"]
+    },
+    "spring_param": {
+      "handler": "spring_param",
+      "parameters": ["hex_string"],
+      "description": "Set spring physics parameters (6 hex chars: 2 for spring constant, 2 for damping, 2 for mass)",
+      "examples": ["spring_param:10050A", "spring_param:643232", "spring_param:AA100D"]
     }
   }
 }
