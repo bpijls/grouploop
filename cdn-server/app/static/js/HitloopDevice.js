@@ -17,24 +17,25 @@ class HitloopDevice {
         this.dNE = 0; // North-East distance (top-right)
         this.dSW = 0; // South-West distance (bottom-left)
         this.dSE = 0; // South-East distance (bottom-right)
+        this.tap = false; // Tap detection state
     }
 
     /**
      * Parse HEX string received from socket server
-     * Format: idHex(4) + ax(2) + ay(2) + az(2) + dTL(2) + dTR(2) + dBR(2) + dBL(2)
+     * Format: idHex(4) + ax(2) + ay(2) + az(2) + dTL(2) + dTR(2) + dBR(2) + dBL(2) + tap(2)
      * @param {string} hexString - The HEX string to parse
      */
     parseHexData(hexString) {
         // Remove any whitespace and newlines, normalize case
         const raw = String(hexString || '').trim();
-        // Expect at least 18 hex chars (id 4 + 7 bytes * 2)
-        if (raw.length < 18) {
+        // Expect at least 20 hex chars (id 4 + 8 bytes * 2)
+        if (raw.length < 20) {
             return false;
         }
-        // Consider only first 18 chars in case of trailing data/newline
-        const cleanHex = raw.slice(0, 18);
+        // Consider only first 20 chars in case of trailing data/newline
+        const cleanHex = raw.slice(0, 20);
         // Validate hex charset
-        if (!/^[0-9a-fA-F]{18}$/.test(cleanHex)) {
+        if (!/^[0-9a-fA-F]{20}$/.test(cleanHex)) {
             return false;
         }
 
@@ -48,6 +49,7 @@ class HitloopDevice {
             const dTRHex = cleanHex.substring(12, 14); // dNE (North-East)
             const dBRHex = cleanHex.substring(14, 16); // dSE (South-East)
             const dBLHex = cleanHex.substring(16, 18); // dSW (South-West)
+            const tapHex = cleanHex.substring(18, 20); // Tap detection
 
             // Convert HEX to decimal values
             const ax = parseInt(axHex, 16);
@@ -57,9 +59,10 @@ class HitloopDevice {
             const dNE = parseInt(dTRHex, 16); // Top-right -> North-East
             const dSE = parseInt(dBRHex, 16); // Bottom-right -> South-East
             const dSW = parseInt(dBLHex, 16); // Bottom-left -> South-West
+            const tapValue = parseInt(tapHex, 16); // Tap detection value
 
             // Validate parsed numbers are finite
-            if ([ax, ay, az, dNW, dNE, dSE, dSW].some(n => !Number.isFinite(n))) {
+            if ([ax, ay, az, dNW, dNE, dSE, dSW, tapValue].some(n => !Number.isFinite(n))) {
                 return false;
             }
 
@@ -70,6 +73,7 @@ class HitloopDevice {
             this.dNE = dNE;
             this.dSE = dSE;
             this.dSW = dSW;
+            this.tap = tapValue === 255; // Convert to boolean: 255 = true, 0 = false
             return true;
         } catch (_e) {
             return false;
@@ -98,6 +102,7 @@ class HitloopDevice {
             dNE: this.dNE,
             dSW: this.dSW,
             dSE: this.dSE,
+            tap: this.tap,
             color: this.color,
             motorState: this.motorState
         };
