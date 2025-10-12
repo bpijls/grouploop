@@ -24,6 +24,8 @@ public:
           scanning(false)
     {
         g_BLEProcess = this;
+        // Initialize RSSI buffer
+        for (int i = 0; i < 4; ++i) beaconRssi[i] = -128;
     }
 
     void setup() override {
@@ -52,6 +54,24 @@ public:
 
     void onScanComplete(BLEScanResults results) {
         Serial.printf("Scan complete! Found %d devices.\n", results.getCount());
+        BLEUUID targetUUID(BEACON_SERVICE_UUID);
+        int matched = 0;
+        // reset buffer for this scan cycle
+        for (int k = 0; k < 4; ++k) beaconRssi[k] = -128;
+        for (int i = 0; i < results.getCount(); ++i) {
+            BLEAdvertisedDevice dev = results.getDevice(i);
+            if (dev.isAdvertisingService(targetUUID)) {
+                matched++;
+                // Handle beacon device here (e.g., store, publish, etc.)
+                // Example: print address and RSSI for matches
+                Serial.printf("Beacon %s RSSI %d\n", dev.getAddress().toString().c_str(), dev.getRSSI());
+                // Store RSSI in first four slots
+                if (matched <= 4) {
+                    beaconRssi[matched - 1] = dev.getRSSI();
+                }
+            }
+        }
+        Serial.printf("Matched %d beacon devices with UUID %s\n", matched, BEACON_SERVICE_UUID);
     }
 
 private:
@@ -78,6 +98,24 @@ private:
     Timer scanOffTimer;  // gap between scans (ms)
     BLEScan* pBLEScan;
     bool scanning;
+
+public:
+    int getBeaconRSSIByIndex(int index) const {
+        if (index < 0 || index >= 4) return -128;
+        return beaconRssi[index];
+    }
+
+    int getBeaconRSSI(const char* key) const {
+        if (!key) return -128;
+        if (strcmp(key, "NW") == 0) return beaconRssi[0];
+        if (strcmp(key, "NE") == 0) return beaconRssi[1];
+        if (strcmp(key, "SE") == 0) return beaconRssi[2];
+        if (strcmp(key, "SW") == 0) return beaconRssi[3];
+        return -128;
+    }
+
+private:
+    int beaconRssi[4];
 };
 
 // Define the callback function to pass to the BLE scanner
