@@ -111,7 +111,9 @@ function encodeFrame() {
 
 function sendFrame() {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
-    ws.send(encodeFrame());
+    let frame = encodeFrame();
+    console.log('Sending frame:', frame);
+    ws.send(frame);
 }
 
 window.preload = function() {
