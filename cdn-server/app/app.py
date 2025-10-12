@@ -37,6 +37,11 @@ def serve_firmware(filename: str):
     return send_from_directory(FIRMWARE_DIR, filename)
 
 
+@app.route("/static/commands.json")
+def serve_commands():
+    return send_from_directory(STATIC_DIR, "commands.json")
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
 
