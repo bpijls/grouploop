@@ -29,6 +29,12 @@
       "parameters": ["pattern_name"],
       "description": "Set LED pattern (breathing, heartbeat, cycle, off)",
       "examples": ["pattern:breathing", "pattern:heartbeat", "pattern:off"]
+    },
+    "reset": {
+      "handler": "reset",
+      "parameters": [],
+      "description": "Reset LED pattern",
+      "examples": ["reset"]
     }
   }
 }

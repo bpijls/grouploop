@@ -52,61 +52,13 @@ private:
     void registerCommands() {
         // Register LED command
         commandRegistry.registerCommand("led", [this](const String& params) {
-            if (params.length() == 0) return;
-            
-            // Check for predefined behavior names first
-            if (params == "red") {
-                setBehavior(&ledsRed);
-                Serial.println("Set LED to red");
-            }
-            else if (params == "green") {
-                setBehavior(&ledsGreen);
-                Serial.println("Set LED to green");
-            }
-            else if (params == "blue") {
-                setBehavior(&ledsBlue);
-                Serial.println("Set LED to blue");
-            }
-            else if (params == "white") {
-                setBehavior(&ledsWhite);
-                Serial.println("Set LED to white");
-            }
-            else if (params == "yellow") {
-                setBehavior(&ledsYellow);
-                Serial.println("Set LED to yellow");
-            }
-            else if (params == "cyan") {
-                setBehavior(&ledsCyan);
-                Serial.println("Set LED to cyan");
-            }
-            else if (params == "magenta") {
-                setBehavior(&ledsMagenta);
-                Serial.println("Set LED to magenta");
-            }
-            else if (params == "breathing") {
-                setBehavior(&ledsBreathing);
-                Serial.println("Set LED to breathing");
-            }
-            else if (params == "heartbeat") {
-                setBehavior(&ledsHeartBeat);
-                Serial.println("Set LED to heartbeat");
-            }
-            else if (params == "cycle") {
-                setBehavior(&ledsCycle);
-                Serial.println("Set LED to cycle");
-            }
-            else if (params == "off") {
-                setBehavior(&ledsOff);
-                Serial.println("Set LED to off");
-            }
-            else {
-                // Try to parse as hex color
-                unsigned long color = strtoul(params.c_str(), NULL, 16);
-                ledsSolid.color = color;
-                setBehavior(&ledsSolid);
-                Serial.print("Set LED color to: ");
-                Serial.println(params);
-            }
+            if (params.length() == 0) return;             
+            // Try to parse as hex color
+            unsigned long color = strtoul(params.c_str(), NULL, 16);
+            currentBehavior->setColor(color);
+            Serial.print("Set LED color to: ");
+            Serial.println(params);
+        
         });
         
         // Register pattern command
@@ -130,6 +82,14 @@ private:
             else {
                 Serial.print("Unknown pattern: ");
                 Serial.println(params);
+            }
+        });
+        
+        // Register reset command
+        commandRegistry.registerCommand("reset", [this](const String& params) {
+            if (currentBehavior) {
+                currentBehavior->reset();
+                Serial.println("Reset LED pattern");
             }
         });
         

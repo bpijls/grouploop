@@ -8,12 +8,15 @@ struct Timer {
     unsigned long interval;
 
     Timer(unsigned long an_interval) : interval(an_interval), last_update(0) {}
+    Timer() : interval(0), last_update(0) {}
 
     bool hasElapsed() {
         return millis() - last_update > interval;
     }
 
     bool checkAndReset() {
+        if (interval == 0) return false;
+        
         if (hasElapsed()) {
             reset();
             return true;

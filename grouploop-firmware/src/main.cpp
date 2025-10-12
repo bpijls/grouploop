@@ -105,7 +105,8 @@ void setup() {
   // Set up LED behavior
   LedProcess* ledProcess = static_cast<LedProcess*>(processManager.getProcess("led"));
   if (ledProcess) {
-    ledProcess->setBehavior(&ledsBreathingRed);
+    ledsBreathing.setColor(0xFF0000);
+    ledProcess->setBehavior(&ledsBreathing);
   }
 
   // Initialize all processes
