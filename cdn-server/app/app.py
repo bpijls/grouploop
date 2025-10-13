@@ -1,4 +1,5 @@
 from flask import Flask, send_from_directory
+from flask_cors import CORS
 import os
 
 
@@ -9,6 +10,9 @@ FIRMWARE_DIR = os.path.join(STATIC_DIR, "firmware")
 
 
 app = Flask(__name__, static_folder="static")
+
+# Configure CORS to allow access from any origin
+CORS(app, origins="*", supports_credentials=True)
 
 
 @app.route("/")
@@ -31,6 +35,11 @@ def serve_js(filename: str):
 @app.route("/firmware/<path:filename>")
 def serve_firmware(filename: str):
     return send_from_directory(FIRMWARE_DIR, filename)
+
+
+@app.route("/static/commands.json")
+def serve_commands():
+    return send_from_directory(STATIC_DIR, "commands.json")
 
 
 if __name__ == "__main__":

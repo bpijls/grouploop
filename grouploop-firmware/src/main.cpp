@@ -17,85 +17,102 @@ Commands van de server uitvoeren.                         |
 #include "processes/VibrationProcess.h"
 #include "processes/BLEProcess.h"
 #include "processes/PublishProcess.h"
+#include "processes/ReceiveProcess.h"
 #include "processes/ConfigurationProcess.h"
 #include "processes/WiFiProcess.h"
 #include "Process.h"
+#include "ProcessManager.h"
+#include "WebSocketManager.h"
+#include "CommandRegistry.h"
 
 
 // Global pointer for BLE callback
-BleProcess* g_bleProcess = nullptr;
+BLEProcess* g_BLEProcess = nullptr;
 
 // Global Configuration instance
 Configuration configuration;
 
-// Global process pointers - initialized in setup()
-LedProcess* ledProcess = nullptr;
-VibrationProcess* vibrationProcess = nullptr;
-IMUProcess* imuProcess = nullptr;
-BleProcess* bleProcess = nullptr;
-PublishProcess* publishProcess = nullptr;
-ConfigurationProcess* configurationProcess = nullptr;
-WiFiProcess* wifiProcess = nullptr;
+// Global ProcessManager instance
+ProcessManager processManager;
 
 
-std::map<String, Process*> processes;
+void registerGlobalCommands() {
+  // Register status command
+  commandRegistry.registerCommand("status", [](const String& params) {
+    Serial.println("=== Device Status ===");
+    Serial.print("WiFi: ");
+    WiFiProcess* wifiProcess = static_cast<WiFiProcess*>(processManager.getProcess("wifi"));
+    if (wifiProcess) {
+      Serial.println(wifiProcess->isWiFiConnected() ? "Connected" : "Disconnected");
+    } else {
+      Serial.println("Unknown");
+    }
+    
+    Serial.print("BLE: ");
+    BLEProcess* bleProcess = static_cast<BLEProcess*>(processManager.getProcess("ble"));
+    if (bleProcess) {
+      Serial.println(bleProcess->isProcessRunning() ? "Running" : "Stopped");
+    } else {
+      Serial.println("Unknown");
+    }
+    
+    Serial.print("WebSocket: ");
+    Serial.println(webSocketManager.isConnected() ? "Connected" : "Disconnected");
+    
+    Serial.print("Device ID: ");
+    Serial.println(webSocketManager.getDeviceId());
+    
+    Serial.print("Registered Commands: ");
+    Serial.println(commandRegistry.getCommandCount());
+    
+    Serial.println("===================");
+  });
+}
 
 void setup() {
   delay(SETUP_DELAY);
   Serial.println("Starting setup");
   Serial.begin(SERIAL_BAUD_RATE);
+  
+  // Initialize random seed for LED color selection
+  randomSeed(analogRead(0));
 
   // Initialize configuration with default values
   configuration.initialize();
-  Serial.println("Configuration initialized");
+ 
+
+  // Add processes to the ProcessManager
+  processManager.addProcess("configuration", new ConfigurationProcess());
+  processManager.addProcess("wifi", new WiFiProcess());
+  processManager.addProcess("led", new LedProcess());
+  processManager.addProcess("vibration", new VibrationProcess());
+  processManager.addProcess("imu", new IMUProcess());
+  processManager.addProcess("ble", new BLEProcess());
+  processManager.addProcess("publish", new PublishProcess());
+  processManager.addProcess("receive", new ReceiveProcess());
   
-  // Print beacon configuration
-  Serial.println("=== Beacon Configuration ===");
-  Serial.print("NE Beacon: ");
-  Serial.println(configuration.getBeaconNE());
-  Serial.print("NW Beacon: ");
-  Serial.println(configuration.getBeaconNW());
-  Serial.print("SE Beacon: ");
-  Serial.println(configuration.getBeaconSE());
-  Serial.print("SW Beacon: ");
-  Serial.println(configuration.getBeaconSW());
-  Serial.println("============================");
-
-  // Initialize process instances
-  wifiProcess = new WiFiProcess();
-  ledProcess = new LedProcess();
-  vibrationProcess = new VibrationProcess();
-  imuProcess = new IMUProcess();
-  bleProcess = new BleProcess();
-  publishProcess = new PublishProcess();
-  configurationProcess = new ConfigurationProcess();
-
-  // Set up the processes map
-  processes = {
-    {"wifi", wifiProcess},
-    {"led", ledProcess},
-    {"vibration", vibrationProcess},
-    {"imu", imuProcess},
-    {"ble", bleProcess},
-    {"publish", publishProcess},
-    {"configuration", configurationProcess}
-  };
+  
+  // Initially halt BLE process until WiFi is connected
+  processManager.haltProcess("ble");
 
   // Set up LED behavior
-  ledProcess->setBehavior(new HeartBeatBehavior(0xFF0000, 770, 2000));
+  LedProcess* ledProcess = static_cast<LedProcess*>(processManager.getProcess("led"));
+  if (ledProcess) {
+    ledsBreathing.setColor(0xFF0000);
+    ledProcess->setBehavior(&ledsBreathing);
+  }
 
   // Initialize all processes
-  for (auto &entry : processes) {
-    entry.second->setup();
-  }
+  processManager.setupProcesses();
   
-  // Set up PublishProcess with process references
-  publishProcess->setProcesses(&processes);
+  // Register global commands
+  registerGlobalCommands();
 }
 
 void loop() {
   // Always update configuration process first
-  if (configurationProcess) {
+  ConfigurationProcess* configurationProcess = static_cast<ConfigurationProcess*>(processManager.getProcess("configuration"));
+  if (configurationProcess && configurationProcess->isProcessRunning()) {
     configurationProcess->update();
   }
   
@@ -104,11 +121,35 @@ void loop() {
     return;
   }
   
-  // Otherwise update all other processes
-  for (auto &entry : processes) {
-    if (entry.first != "configuration") {
-      entry.second->update();
+  // Check WiFi status and start BLE process when WiFi is connected
+  WiFiProcess* wifiProcess = static_cast<WiFiProcess*>(processManager.getProcess("wifi"));
+  BLEProcess* bleProcess = static_cast<BLEProcess*>(processManager.getProcess("ble"));
+  LedProcess* ledProcess = static_cast<LedProcess*>(processManager.getProcess("led"));
+  
+  if (wifiProcess && bleProcess) {
+    if (wifiProcess->isWiFiConnected() && !bleProcess->isProcessRunning()) {
+      Serial.println("WiFi connected - starting BLE process");
+      processManager.startProcess("ble");
+      
+      // Change LED to random non-red color when WiFi connects
+      if (ledProcess) {
+        ledProcess->changeToRandomColor();
+      }
+    } else if (!wifiProcess->isWiFiConnected() && bleProcess->isProcessRunning()) {
+      Serial.println("WiFi disconnected - halting BLE process");
+      processManager.haltProcess("ble");
+      
+      // Change LED back to red breathing when WiFi disconnects
+      if (ledProcess) {
+        ledProcess->setToRedBreathing();
+      }
     }
   }
   
+  
+  // Update the shared WebSocket connection
+  webSocketManager.update();
+  
+  // Update all other running processes
+  processManager.updateProcesses();
 }

@@ -17,7 +17,7 @@ services:
     environment:
       - WS_HOST=0.0.0.0
       - WS_PORT=5000
-      - PYTHONUNBUFFERED=1
+      - PYTHONUNBUFFERED=1      
   client:
     build:
       context: ./socket-client
@@ -41,6 +41,17 @@ services:
     environment:
       PYTHONUNBUFFERED: 1
       <<: *cdn_env
+  device_control:
+    build:
+      context: ./device-control
+      dockerfile: Dockerfile
+    ports:
+      - "5009:5000" # Flask device control UI
+    volumes:
+      - ./device-control:/app
+    environment:
+      <<: [*ws_env, *cdn_env]
+      PYTHONUNBUFFERED: 1
   simulator:
     build:
       context: ./socket-simulator
