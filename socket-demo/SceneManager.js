@@ -20,7 +20,21 @@ class SceneManager {
     draw() {
         if (!this.currentKey) return;
         const scene = this.scenes.get(this.currentKey);
-        if (scene && typeof scene.draw === 'function') scene.draw();
+        if (scene && typeof scene.draw === 'function') {
+            scene.draw();
+            // Draw debug text if enabled
+            if (scene.showDebugText && typeof scene.drawDebugText === 'function') {
+                scene.drawDebugText();
+            }
+        }
+    }
+
+    keyPressed() {
+        if (!this.currentKey) return;
+        const scene = this.scenes.get(this.currentKey);
+        if (scene && typeof scene.keyPressed === 'function') {
+            scene.keyPressed();
+        }
     }
 
     getOrderedKeys() {

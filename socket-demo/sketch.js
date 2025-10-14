@@ -30,6 +30,9 @@ function keyPressed() {
         gameStateManager.nextScene();
     } else if (keyCode === LEFT_ARROW) {
         gameStateManager.previousScene();
+    } else {
+        // Pass other key events to the current scene
+        gameStateManager.keyPressed();
     }
 }
 

@@ -324,10 +324,7 @@ class DeviceCircle {
         ellipse(this.position.x, this.position.y, currentRadius * 2);
         
         // Draw device ID
-        fill(255);
-        textAlign(CENTER, CENTER);
-        textSize(12);
-        text(this.id, this.position.x, this.position.y);
+      
     }
     
     getPosition() {
@@ -427,13 +424,25 @@ class ParticleDeviceScene extends Scene {
         for (const deviceCircle of this.deviceCircles.values()) {
             deviceCircle.draw();
         }
-        
-        // Draw UI info with BLEND mode
+    }
+    
+    drawDebugText() {
+        // Draw debug information with BLEND mode
+        blendMode(BLEND);
         fill(255);
         textAlign(LEFT, TOP);
         textSize(16);
         text(`Devices: ${this.deviceManager.getDeviceCount()}`, 10, 10);
         text(`Particles: ${this.particleSystem.particles.length}`, 10, 30);
         text('Tap devices to launch particles!', 10, height - 20);
+        text('Press D to toggle debug info', 10, height - 40);
+
+        for (const deviceCircle of this.deviceCircles.values()) {
+              
+        fill(0);
+        textAlign(CENTER, CENTER);
+        textSize(12);
+        text(deviceCircle.id, deviceCircle.position.x, deviceCircle.position.y);
+        }
     }
 }
