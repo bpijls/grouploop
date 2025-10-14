@@ -150,10 +150,6 @@ class WanderingAttractorsScene extends Scene {
 			circle(p.x, p.y, 12);
 		}
 
-		// HUD
-		fill(255);
-		text(`Devices: ${this.particles.size}`, 10, 20);
-		text('Wandering circles; attraction left(NW)/right(NE) by signal', 10, height - 10);
 	}
 
 	#hashToHue(str) {
@@ -162,6 +158,16 @@ class WanderingAttractorsScene extends Scene {
 			h = (h * 31 + String(str).charCodeAt(i)) >>> 0;
 		}
 		return (h % 200) + 30; // 30..229 range for visible colors in RGB fill
+	}
+	
+	drawDebugText() {
+		blendMode(BLEND);
+		fill(255);
+		textAlign(LEFT, TOP);
+		textSize(16);
+		text(`Devices: ${this.particles.size}`, 10, 20);
+		text('Wandering circles; attraction left(NW)/right(NE) by signal', 10, height - 30);
+		text('Press D to toggle debug info', 10, height - 10);
 	}
 }
 

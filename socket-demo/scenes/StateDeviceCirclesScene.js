@@ -73,8 +73,7 @@ class StateDeviceCirclesScene extends Scene {
       background(0);
   
       // --- device circles (kept)
-      const dm=this.deviceManager; fill(255);
-      text(`Devices: ${dm.getDeviceCount()}`,10,20);
+      const dm=this.deviceManager;
       for(const dev of dm.getAllDevices().values()){
         const d=dev.getSensorData(); noStroke(); fill(...d.color);
         const toPx=v=>(255-(v||0))/255*Math.hypot(width,height);
@@ -93,5 +92,14 @@ class StateDeviceCirclesScene extends Scene {
       // --- layer the star/word effect
       if(this.mode==='default') this._drawStars();
       else this._drawWord();
+    }
+    
+    drawDebugText() {
+      blendMode(BLEND);
+      fill(255);
+      textAlign(LEFT, TOP);
+      textSize(16);
+      text(`Devices: ${this.deviceManager.getDeviceCount()}`, 10, 20);
+      text('Press 1 to toggle mode, D for debug info', 10, height - 20);
     }
   }
