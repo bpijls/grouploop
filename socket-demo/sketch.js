@@ -15,6 +15,9 @@ gameStateManager.addScene('challenge1', new ChallengeOneScene(deviceManager));
 gameStateManager.addScene('move', new MoveScene(deviceManager));
 gameStateManager.addScene('playground', new Playground(deviceManager));
 gameStateManager.addScene('reveal', new ChallengeImageReveal(deviceManager));
+gameStateManager.addScene('popcorn', new PopCornScene(deviceManager));
+gameStateManager.addScene('earth', new EarthScene(deviceManager));
+gameStateManager.addScene('hats', new HatsScene(deviceManager));
 
 function setup() {
     createCanvas(windowWidth, windowHeight);
@@ -22,7 +25,7 @@ function setup() {
     // Connect to WebSocket server
     deviceManager.connect();
     // Default state
-    gameStateManager.switchTo('reveal');
+    gameStateManager.switchTo('hats');
 }
 
 function draw() {

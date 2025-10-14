@@ -1,4 +1,4 @@
-  class ChallengeImageReveal extends Scene {
+  class PopCornScene extends Scene {
     constructor(...a) {
       super(...a);
       this.dotSize = 4;
@@ -8,6 +8,7 @@
       this._k1 = false;
       this.mode = "default";
       this.t = 0;
+      this.obstacles = [];
       // --- Step 1: magnets (left & right centers)
       this.magnets = []; // [{x,y},{x,y}]
       this.magnetR = 16; // visual radius for debug
@@ -19,7 +20,7 @@
       this.deviceRadius = 40; // collision body radius for device circles
       this.collisionIterations = 4; // how many relaxation passes per frame
       this.magnetDampenFactor = 0.9; // 0..1, how strongly movement reduces magnet pull
-  
+
       // WanderingAttractors-style motion params
       this.params = {
         maxSpeed: 2.0,
@@ -36,11 +37,16 @@
       // --- Scratch & Reveal layer (circle cover)
       this.bgImg = null;         // image behind the cover dots
       this.coverDots = [];       // grid of small circles that hide the image
-      this.coverR = 10;           // radius of each cover dot (smaller)
-      this.coverSpacing = 15;     // very tight spacing (slight overlap so no BG shows)
+      this.coverR = 12;           // radius of each cover dot (smaller)
+      this.coverSpacing = 25;     // very tight spacing (slight overlap so no BG shows)
       this.coverFriction = 0.98; // for explode motion
       this.coverGravity = 0.40;  // for fall/explode
       this.coverBlastR = 100;     // tap blast radius
+      this.cornImg = null;      // kernel sprite
+      this.popImg = null;       // popcorn sprite
+      this.popScale = 2.0;      // how much bigger popcorn is vs kernel
+      this.popJumpMin = 6.0;   // min upward jump speed (px/frame)
+      this.popJumpMax = 10.0;  // max upward jump speed (px/frame)
     }
   
     setup() {
@@ -82,11 +88,13 @@
       }));
   
 
-      // Load background image (shown under the cover dots)
+      // Load corn and popcorn images (sprites for cover dots)
       try {
-        this.bgImg = loadImage("./images/starry-night.jpg");
+        this.cornImg = loadImage("./images/corn.png");
+        this.popImg = loadImage("./images/popcorn.png");
       } catch (_) {
-        this.bgImg = null; // fallback handled in draw()
+        this.cornImg = null;
+        this.popImg = null;
       }
       // Build the initial cover dot grid
       this._initCoverDots();
@@ -136,7 +144,7 @@
         const y = Math.min(r + row * s, height - r); // clamp last row to bottom edge
         for (let col = 0; col < cols; col++) {
           const x = Math.min(r + col * s, width - r); // clamp last col to right edge
-          this.coverDots.push({ x, y, vx: 0, vy: 0, state: "idle" });
+          this.coverDots.push({ x, y, vx: 0, vy: 0, state: "idle", popped: false });
         }
       }
     }
@@ -149,19 +157,15 @@
         const dx = d.x - cx;
         const dy = d.y - cy;
         if (dx * dx + dy * dy <= R2) {
-          if (Math.random() < 0.5) {
-            // fall
-            d.state = "fall";
-            d.vx = 0;
-            d.vy = Math.random() * 1.5 + 0.5;
-          } else {
-            // explode outward from tap center
-            const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-            const speed = 3 + Math.random() * 4;
-            d.state = "explode";
-            d.vx = (dx / dist) * speed;
-            d.vy = (dy / dist) * speed * 0.8 - 0.5; // slight upward kick
-          }
+          // turn into popcorn, POP upward first, then fall
+          d.popped = true;
+          d.state = "pop"; // new jump phase
+          d.vx = (Math.random() - 0.5) * 0.6;   // small horizontal drift
+          // stronger upward jump for a bigger pop
+          const minJ = this.popJumpMin ?? 6.0;
+          const maxJ = this.popJumpMax ?? 10.0;
+          const j = minJ + Math.random() * (maxJ - minJ);
+          d.vy = -j;
         }
       }
     }
@@ -171,7 +175,12 @@
       const fr = this.coverFriction;
       for (const d of this.coverDots) {
         if (d.state === "idle") continue;
-        if (d.state === "fall") {
+        if (d.state === "pop") {
+          // popcorn jumps up briefly
+          d.vy += g;      // gravity pulls back down
+          d.vx *= fr;     // slight air resistance
+          if (d.vy > 0) d.state = "fall"; // after peak, start falling
+        } else if (d.state === "fall") {
           d.vy += g;
         } else if (d.state === "explode") {
           d.vy += g * 0.6;
@@ -189,12 +198,20 @@
     _drawCoverDots() {
       push();
       noStroke();
-      // Light blue #69CBFF
-      const nr = 105, ng = 203, nb = 255;
-      fill(nr, ng, nb);
+      imageMode(CENTER);
+      const sKernel = this.coverR * 2;
+      const sPop = sKernel * (this.popScale || 1.2);
       for (const d of this.coverDots) {
         if (d.state === "gone") continue;
-        circle(d.x, d.y, this.coverR * 2);
+        const img = d.popped ? this.popImg : this.cornImg;
+        const s = d.popped ? sPop : sKernel;
+        if (img && img.width) {
+          image(img, d.x, d.y, s, s);
+        } else {
+          // fallback: simple circle if images not loaded
+          fill(d.popped ? 255 : 255, d.popped ? 230 : 255, 120);
+          circle(d.x, d.y, s);
+        }
       }
       pop();
     }
@@ -268,11 +285,6 @@
     }
   
   
-  
-  
-  
-  
-  
     _drawWord() {
       if (this.mode !== "text") return;
       noStroke();
@@ -305,7 +317,8 @@
         this.mode === "default" ? this._startWord() : this._clearWord();
       }
       this._k1 = k1;
-      // (star toggle and obstacles removed)
+  
+      this.obstacles.length = 0;
       const dm = this.deviceManager,
         count = dm.getDeviceCount();
       const devs = [...dm.getAllDevices().values()],
@@ -351,51 +364,49 @@
         }
       }
   
-      // (obstacle grid code removed)
+      // Rebuild obstacles from resolved device positions
+      for (const p of devPositions) {
+        this.obstacles.push({ x: p.x, y: p.y, r: R });
+      }
+  
+      if (this.mode === "text")
+        for (const p of this.parts)
+          this.obstacles.push({ x: p.x, y: p.y, r: this.dotSize * 0.6 });
+  
 
       // --- Update ripple waves (visual only) ---
       for (let i = this.ripples.length - 1; i >= 0; i--) {
         const w = this.ripples[i];
         push();
+        blendMode(ADD);
+        // soft outer glows
+        noStroke();
+        fill(255, 60, 40, 18);
+        ellipse(w.x, w.y, (w.r + 18) * 2, (w.r + 18) * 2);
+        fill(255, 80, 50, 24);
+        ellipse(w.x, w.y, (w.r + 10) * 2, (w.r + 10) * 2);
+        // hot rings
         noFill();
-        const a1 = 255, a2 = 210, a3 = 130;
-        // inner ring
-        stroke(w.colR, w.colG, w.colB, a2);
-        strokeWeight(2);
-        if (w.r - 10 > 0) ellipse(w.x, w.y, (w.r - 10) * 2, (w.r - 10) * 2);
-        // main ring
-        stroke(w.colR, w.colG, w.colB, a1);
+        stroke(255, 90, 60, 140); // main hot ring
         strokeWeight(4);
         ellipse(w.x, w.y, w.r * 2, w.r * 2);
-        // outer ring
-        stroke(w.colR, w.colG, w.colB, a3);
+        stroke(255, 40, 30, 90); // inner ring
         strokeWeight(2);
-        ellipse(w.x, w.y, (w.r + 10) * 2, (w.r + 10) * 2);
+        if (w.r - 12 > 0) ellipse(w.x, w.y, (w.r - 12) * 2, (w.r - 12) * 2);
+        stroke(255, 120, 80, 80); // outer ring
+        strokeWeight(2);
+        ellipse(w.x, w.y, (w.r + 12) * 2, (w.r + 12) * 2);
         pop();
-        // Evolve wave
+        // evolve & cull
         w.r += w.speed;
-        // Remove finished wave
-        if (w.r > w.maxR || w.alpha <= 0) {
-          this.ripples.splice(i, 1);
-        }
+        if (w.r > w.maxR || w.alpha <= 0) this.ripples.splice(i, 1);
       }
   
-      // (color mode and star drawing removed)
+      // (star color mode and star drawing removed)
       this._drawWord();
 
-      // --- Background image shown under the cover dots ---
-      if (this.bgImg && this.bgImg.width) {
-        image(this.bgImg, 0, 0, width, height);
-      } else {
-        // simple fallback gradient
-        for (let y = 0; y < height; y += 4) {
-          const a = map(y, 0, height, 30, 90);
-          stroke(40, a);
-          line(0, y, width, y);
-        }
-        noStroke();
-      }
-      // Update and draw the cover dots (white disks that hide the image)
+      // Keep background solid black; no image/gradient
+      // Update and draw the cover (corn/popcorn) sprites
       this._updateCoverDots();
       this._drawCoverDots();
   
