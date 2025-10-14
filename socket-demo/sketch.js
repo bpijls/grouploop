@@ -10,6 +10,7 @@ const gameStateManager = new SceneManager(deviceManager);
 // gameStateManager.addScene('physics', new PartialPhysicsScene(deviceManager));
 gameStateManager.addScene('physicsWithGlow', new PartialPhysicsWithGlowScene(deviceManager));
 gameStateManager.addScene('wander', new WanderingAttractorsScene(deviceManager));
+gameStateManager.addScene('particles', new ParticleDeviceScene(deviceManager));
 
 function setup() {
     createCanvas(windowWidth, windowHeight);
@@ -17,7 +18,7 @@ function setup() {
     // Connect to WebSocket server
     deviceManager.connect();
     // Default state
-    gameStateManager.switchTo('physicsWithGlow');
+    gameStateManager.switchTo('particles');
 }
 
 function draw() {
