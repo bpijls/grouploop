@@ -11,14 +11,15 @@ const gameStateManager = new SceneManager(deviceManager);
 gameStateManager.addScene('physicsWithGlow', new PartialPhysicsWithGlowScene(deviceManager));
 gameStateManager.addScene('wander', new WanderingAttractorsScene(deviceManager));
 gameStateManager.addScene('particles', new ParticleDeviceScene(deviceManager));
+gameStateManager.addScene('eyes', new EyeDeviceScene(deviceManager));
 
 function setup() {
-    createCanvas(windowWidth, windowHeight);
+    createCanvas(windowWidth, windowHeight, WEBGL);
 
     // Connect to WebSocket server
     deviceManager.connect();
     // Default state
-    gameStateManager.switchTo('particles');
+    gameStateManager.switchTo('eyes');
 }
 
 function draw() {
