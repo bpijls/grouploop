@@ -12,6 +12,9 @@ gameStateManager.addScene('physicsWithGlow', new PartialPhysicsWithGlowScene(dev
 gameStateManager.addScene('wander', new WanderingAttractorsScene(deviceManager));
 gameStateManager.addScene('prototype', new PrototypeScene(deviceManager));
 gameStateManager.addScene('challenge1', new ChallengeOneScene(deviceManager));
+gameStateManager.addScene('move', new MoveScene(deviceManager));
+gameStateManager.addScene('playground', new Playground(deviceManager));
+gameStateManager.addScene('reveal', new ChallengeImageReveal(deviceManager));
 
 function setup() {
     createCanvas(windowWidth, windowHeight);
@@ -19,7 +22,7 @@ function setup() {
     // Connect to WebSocket server
     deviceManager.connect();
     // Default state
-    gameStateManager.switchTo('challenge1');
+    gameStateManager.switchTo('reveal');
 }
 
 function draw() {

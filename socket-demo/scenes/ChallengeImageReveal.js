@@ -30,7 +30,7 @@ function _safeLoadSound(path, onLoad) {
     };
     return audio;
   }
-  class ChallengeOneScene extends Scene {
+  class ChallengeImageReveal extends Scene {
     constructor(...a) {
       super(...a);
       this.dotSize = 4;
@@ -52,7 +52,7 @@ function _safeLoadSound(path, onLoad) {
       // --- Step 1: magnets (left & right centers)
       this.magnets = []; // [{x,y},{x,y}]
       this.magnetR = 16; // visual radius for debug
-      this.showMagnets = true; // draw faint markers (can toggle later)
+      this.showMagnets = false; // draw faint markers (can toggle later)
       this._k2 = false; // key '2' state (edge-trigger)
       this.starSplit = false; // when true: left stars = blue, right stars = red
       // Simplified magnet + random walk system for circles
@@ -70,12 +70,20 @@ function _safeLoadSound(path, onLoad) {
         wanderJitter: 0.05,
         baseAttraction: 0.16,
         edgePadding: 40,
+        verticalGain: 3.0,
+        verticalDeadzone: 0.05,
+        horizontalGain: 3.0,
+        horizontalDeadzone: 0.05,
       };
       this.ripples = [];
-      // Fruits (apple icon) + per-device size boost
-      this.fruits = [];
-      this.appleImg = null;
-      this._devSizeBoost = new Map(); // key -> added radius when claiming fruit
+      // --- Scratch & Reveal layer (circle cover)
+      this.bgImg = null;         // image behind the cover dots
+      this.coverDots = [];       // grid of small circles that hide the image
+      this.coverR = 10;           // radius of each cover dot (smaller)
+      this.coverSpacing = 15;     // very tight spacing (slight overlap so no BG shows)
+      this.coverFriction = 0.98; // for explode motion
+      this.coverGravity = 0.40;  // for fall/explode
+      this.coverBlastR = 100;     // tap blast radius
     }
   
     setup() {
@@ -120,7 +128,16 @@ function _safeLoadSound(path, onLoad) {
       this.starLayer.pixelDensity(1);
       this.starCap = width * 9;
       this.stars = new Array(this.starCap);
-  
+
+      // Load background image (shown under the cover dots)
+      try {
+        this.bgImg = loadImage("./images/starry-night.jpg");
+      } catch (_) {
+        this.bgImg = null; // fallback handled in draw()
+      }
+      // Build the initial cover dot grid
+      this._initCoverDots();
+
       // Load background sound (works with or without p5.sound)
       this.bgSound = _safeLoadSound("./sounds/rain.mp3", () => {
         try {
@@ -131,15 +148,8 @@ function _safeLoadSound(path, onLoad) {
         } catch (_) {}
         this._startBg();
       });
-  
-      this._updateMagnets();
 
-      // Load apple icon
-      try {
-        this.appleImg = loadImage('./icons/apple.svg');
-      } catch (_) {
-        this.appleImg = null;
-      }
+      this._updateMagnets();
     }
   
     _resetStars() {
@@ -175,6 +185,81 @@ function _safeLoadSound(path, onLoad) {
         { x: width - this.magnetR, y: height * 0.5 }, // right edge middle
       ];
     }
+
+    // --- Scratch & Reveal (cover dots) -------------------------------------
+    _initCoverDots() {
+      this.coverDots.length = 0;
+      const r = this.coverR;
+      const s = this.coverSpacing || r * 2 + 2;
+      // compute how many columns/rows are needed to cover the full canvas
+      const cols = Math.max(1, Math.ceil((width - 2 * r) / s) + 1);
+      const rows = Math.max(1, Math.ceil((height - 2 * r) / s) + 1);
+      for (let row = 0; row < rows; row++) {
+        const y = Math.min(r + row * s, height - r); // clamp last row to bottom edge
+        for (let col = 0; col < cols; col++) {
+          const x = Math.min(r + col * s, width - r); // clamp last col to right edge
+          this.coverDots.push({ x, y, vx: 0, vy: 0, state: "idle" });
+        }
+      }
+    }
+
+    _blastDots(cx, cy) {
+      const R = this.coverBlastR;
+      const R2 = R * R;
+      for (const d of this.coverDots) {
+        if (d.state === "gone") continue;
+        const dx = d.x - cx;
+        const dy = d.y - cy;
+        if (dx * dx + dy * dy <= R2) {
+          if (Math.random() < 0.5) {
+            // fall
+            d.state = "fall";
+            d.vx = 0;
+            d.vy = Math.random() * 1.5 + 0.5;
+          } else {
+            // explode outward from tap center
+            const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+            const speed = 3 + Math.random() * 4;
+            d.state = "explode";
+            d.vx = (dx / dist) * speed;
+            d.vy = (dy / dist) * speed * 0.8 - 0.5; // slight upward kick
+          }
+        }
+      }
+    }
+
+    _updateCoverDots() {
+      const g = this.coverGravity;
+      const fr = this.coverFriction;
+      for (const d of this.coverDots) {
+        if (d.state === "idle") continue;
+        if (d.state === "fall") {
+          d.vy += g;
+        } else if (d.state === "explode") {
+          d.vy += g * 0.6;
+          d.vx *= fr;
+          d.vy *= fr;
+        }
+        d.x += d.vx;
+        d.y += d.vy;
+        if (d.y - this.coverR > height + 40 || d.x < -40 || d.x > width + 40) {
+          d.state = "gone";
+        }
+      }
+    }
+
+    _drawCoverDots() {
+      push();
+      noStroke();
+      // Light blue #69CBFF
+      const nr = 105, ng = 203, nb = 255;
+      fill(nr, ng, nb);
+      for (const d of this.coverDots) {
+        if (d.state === "gone") continue;
+        circle(d.x, d.y, this.coverR * 2);
+      }
+      pop();
+    }
   
     // (Debug) draw magnets so we can see them while building
     _drawMagnets() {
@@ -204,65 +289,43 @@ function _safeLoadSound(path, onLoad) {
         };
         this._devState.set(devKey, p);
       }
-  
+
       // --- Wander: small random steering force
       const jitter = this.params.wanderJitter;
-      p.vx += random(-jitter, jitter);
-      p.vy += random(-jitter, jitter);
-  
-      // --- Attraction weights from NE/NW distance (inverse distance as proxy for strength)
-      const eps = 1e-4;
-      const invNW = 1.0 / max(eps, sensor.dNW || 0);
-      const invNE = 1.0 / max(eps, sensor.dNE || 0);
-      const sumInv = invNW + invNE + eps;
-      const wLeft = invNW / sumInv; // left magnet maps to NW
-      const wRight = invNE / sumInv; // right magnet maps to NE
-  
+      // remove horizontal wander; vertical is sensor-driven
+      // (no random added to vx/vy)
+
       // --- Movement-based damping from accel
       const ax = this._normAccel(sensor.ax ?? sensor.aX ?? sensor.accX);
       const ay = this._normAccel(sensor.ay ?? sensor.aY ?? sensor.accY);
       const az = this._normAccel(sensor.az ?? sensor.aZ ?? sensor.accZ);
-      const movement = Math.min(1, Math.sqrt(ax * ax + ay * ay + az * az));
-      const attractBase =
-        this.params.baseAttraction * (1 - movement * this.magnetDampenFactor);
-  
-      // --- Forces toward left/right attractors
-      const left = this.magnets[0];
-      const right = this.magnets[1];
-  
-      let lx = left.x - p.x,
-          ly = left.y - p.y;
-      let lm = Math.sqrt(lx * lx + ly * ly) || 1;
-      lx /= lm;
-      // horizontal-only magnet: zero vertical component
-      p.vx += lx * (attractBase * wLeft);
-      // no vertical magnet influence on vy
-  
-      let rx = right.x - p.x,
-          ry = right.y - p.y;
-      let rm = Math.sqrt(rx * rx + ry * ry) || 1;
-      rx /= rm;
-      // horizontal-only magnet: zero vertical component
-      p.vx += rx * (attractBase * wRight);
-      // no vertical magnet influence on vy
-  
-      // --- Limit velocity & integrate position
-      const maxS = this.params.maxSpeed;
-      const v2 = p.vx * p.vx + p.vy * p.vy;
-      if (v2 > maxS * maxS) {
-        const v = Math.sqrt(v2);
-        p.vx = (p.vx / v) * maxS;
-        p.vy = (p.vy / v) * maxS;
+      // Horizontal movement: use ay only (ay>0 -> right, ay<0 -> left)
+      const hCombo = ay;
+      const hDead = this.params.horizontalDeadzone ?? 0.05;
+      if (Math.abs(hCombo) > hDead) {
+        p.vx += hCombo * (this.params.horizontalGain ?? 3.0);
       }
-  
+      // --- Vertical movement: use ax only
+      // ax > 0 -> move up (negative vy); ax < 0 -> move down
+      const combo = ax; // direct use of ax
+      const dead = this.params.verticalDeadzone ?? 0.05;
+      if (Math.abs(combo) > dead) {
+        p.vy += -combo * (this.params.verticalGain ?? 3.0);
+      }
+
+      // --- Limit velocity per-axis (keep horizontal independent of vertical)
+      const maxS = this.params.maxSpeed;
+      p.vx = Math.max(-maxS, Math.min(maxS, p.vx));
+      p.vy = Math.max(-maxS, Math.min(maxS, p.vy));
+
       p.x += p.vx;
       p.y += p.vy;
-  
+
       // Keep inside bounds (accounting for circle radius)
       const pad = this.deviceRadius;
       p.x = constrain(p.x, pad, width - pad);
       p.y = constrain(p.y, pad, height - pad);
-  
+
       return { x: p.x, y: p.y };
     }
   
@@ -522,7 +585,6 @@ function _safeLoadSound(path, onLoad) {
   
     draw() {
       background(0);
-      this._updateMagnets();
   
       const k1 = keyIsDown(49);
       if (k1 && !this._k1) {
@@ -690,59 +752,23 @@ function _safeLoadSound(path, onLoad) {
   
       this._drawStars(colorMode);
       this._drawWord();
-      this._drawMagnets();
 
-      // --- Fruits: update, render, and handle claiming ---
-      if (!this.fruits) this.fruits = [];
-      {
-        // Physics + draw
-        for (const f of this.fruits) {
-          // motion
-          f.x += f.vx;
-          f.y += f.vy;
-          f.vy += 0.05; // gravity
-          // subtle sideways flow using noise
-          const tt = (millis() - (f.t0 || 0)) * 0.001;
-          f.vx += (noise(f.x * 0.003, f.y * 0.003, tt) - 0.5) * 0.06;
-          // bounds & gentle bounce
-          if (f.x < 0) { f.x = 0; f.vx *= -0.8; }
-          if (f.x > width) { f.x = width; f.vx *= -0.8; }
-          if (f.y < -100) { f.y = -100; f.vy *= 0.5; }
-          if (f.y > height) { f.y = height; f.vy *= -0.6; }
-          // damping
-          f.vx *= 0.995;
-          f.vy *= 0.995;
-
-          // draw apple icon (fallback to circle if load failed)
-          const sz = f.sz || 26;
-          if (this.appleImg) {
-            image(this.appleImg, f.x - sz * 0.5, f.y - sz * 0.5, sz, sz);
-          } else {
-            push(); noStroke(); fill(...(f.col || [255,0,0])); circle(f.x, f.y, sz * 0.9); pop();
-          }
+      // --- Background image shown under the cover dots ---
+      if (this.bgImg && this.bgImg.width) {
+        image(this.bgImg, 0, 0, width, height);
+      } else {
+        // simple fallback gradient
+        for (let y = 0; y < height; y += 4) {
+          const a = map(y, 0, height, 30, 90);
+          stroke(40, a);
+          line(0, y, width, y);
         }
-
-        // Claiming: overlap with device circles increases that device's radius (visual only)
-        for (const { x: dx, y: dy, d } of devPositions) {
-          const key = d?.id ?? d?.deviceId ?? d;
-          for (const f of this.fruits) {
-            if (f.claimed) continue;
-            const sz = f.sz || 26;
-            const addR = this._devSizeBoost.get(key) || 0;
-            const rr = this.deviceRadius + addR;
-            const dsq = (f.x - dx) * (f.x - dx) + (f.y - dy) * (f.y - dy);
-            if (dsq <= (rr + sz * 0.5) * (rr + sz * 0.5)) {
-              f.claimed = true;
-              const curr = this._devSizeBoost.get(key) || 0;
-              this._devSizeBoost.set(key, Math.min(curr + 6, 40));
-            }
-          }
-        }
-
-        // cleanup claimed/offscreen fruits
-        this.fruits = this.fruits.filter(f => !f.claimed && f.y < height + 60);
+        noStroke();
       }
-
+      // Update and draw the cover dots (white disks that hide the image)
+      this._updateCoverDots();
+      this._drawCoverDots();
+  
       fill(255);
       noStroke();
       text(`Devices: ${count}`, 10, 20);
@@ -765,38 +791,21 @@ function _safeLoadSound(path, onLoad) {
             colG: 220,
             colB: 255,
           });
-          // --- FRUIT SPAWN: apple icon falling from above (side-anchored) ---
-          if (!this.fruits) this.fruits = [];
-          const leftSide = x < width * 0.5;
-          const minX = leftSide ? 20 : width * 0.5 + 20;
-          const maxX = leftSide ? width * 0.5 - 20 : width - 20;
-          this.fruits.push({
-            x: random(minX, maxX),   // spawn within player's half
-            y: random(-80, -20),     // above the screen
-            vx: random(-0.8, 0.8),   // gentle drift
-            vy: random(0.6, 1.6),    // falling
-            sz: 50,
-            col: [255, 0, 0],
-            claimed: false,
-            owner: d,
-            t0: millis(),
-          });
+          // Also blast the cover dots to reveal the image in this area
+          this._blastDots(x, y);
           d._tapHandled = true; // mark handled until tap releases
         } else if (d && !d.tap) {
           d._tapHandled = false;
         }
         noStroke();
         fill(255);
-        const key = d?.id ?? d?.deviceId ?? d;
-        const extraR = this._devSizeBoost.get(key) || 0;
-        const rNow = this.deviceRadius + extraR;
-        ellipse(x, y, rNow * 2);
+        ellipse(x, y, this.deviceRadius * 2);
         const ax = this._normAccel(d.ax ?? d.aX ?? d.accX);
         const ay = this._normAccel(d.ay ?? d.aY ?? d.accY);
         const az = this._normAccel(d.az ?? d.aZ ?? d.accZ);
-        const m = 12 * (1 + 0.15 * az),
-          ex = ax * m,
-          ey = -ay * m;
+        const m = 12 * (1 + 0.15 * az);
+        const ex = ay * m;   // ay>0 -> right, ay<0 -> left
+        const ey = -ax * m;  // ax>0 -> up, ax<0 -> down
         fill(255);
         ellipse(x - 16, y - 10, 32, 32);
         ellipse(x + 16, y - 10, 32, 32);
