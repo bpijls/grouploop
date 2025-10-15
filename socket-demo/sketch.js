@@ -13,9 +13,19 @@ gameStateManager.addScene('wander', new WanderingAttractorsScene(deviceManager))
 gameStateManager.addScene('particles', new ParticleDeviceScene(deviceManager));
 gameStateManager.addScene('eyes', new EyeDeviceScene(deviceManager));
 
+let uiFont;
+
+function preload() {
+    // Load a web-safe TTF so WEBGL text rendering is enabled
+    uiFont = loadFont('https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxP.ttf');
+}
+
 function setup() {
     createCanvas(windowWidth, windowHeight, WEBGL);
-
+    if (uiFont) {
+        textFont(uiFont);
+    }
+    textSize(16);
     // Connect to WebSocket server
     deviceManager.connect();
     // Default state
