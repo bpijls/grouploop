@@ -187,8 +187,11 @@ class EyeDeviceScene extends Scene {
     draw() {
         // Clear the screen
         clear();
+        orbitControl();
         background(20, 20, 40); // Dark blue background
-        
+        push();
+        translate(width/2, height/2);
+
         // Update eye devices
         this.updateEyeDevices();
         
@@ -208,6 +211,7 @@ class EyeDeviceScene extends Scene {
         if (this.showDebugText) {
             this.drawDebugText();
         }
+        pop();
     }
     
     drawDebugText() {

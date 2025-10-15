@@ -23,7 +23,10 @@ function setup() {
 }
 
 function draw() {
+    push();
+    translate(-width/2, -height/2);
     gameStateManager.draw();
+    pop();
 }
 
 function keyPressed() {
