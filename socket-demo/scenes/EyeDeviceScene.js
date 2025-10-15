@@ -246,52 +246,27 @@ class EyeDeviceScene extends Scene {
         
         // Add bright back-light to illuminate edges
         pointLight(255, 255, 255, this.backLightPosition.x, this.backLightPosition.y, this.backLightPosition.z);
-		let zPlane = 200;
-		// Represent each device as a sphere on a plane at z = -100 (relative to camera)
-		push();
-            translate(0, 0, zPlane);
-		// Draw grid on the plane where spheres reside
-		push();
-		stroke(80, 80, 110);
-		strokeWeight(1);
-		noFill();
-		const gridStep = 50;
-		for (let gx = -width/2; gx <= width/2; gx += gridStep) {
-			line(gx, -height/2, 0, gx, height/2, 0);
-		}
-		for (let gy = -height/2; gy <= height/2; gy += gridStep) {
-			line(-width/2, gy, 0, width/2, gy, 0);
-		}
-		pop();
-		noStroke();
-		for (const eyeDevice of this.eyeDevices.values()) {
-			const device = this.deviceManager.getDevice(eyeDevice.getId());
-			if (!device) continue;
-			const data = device.getSensorData();
-			// Invisible attractors at ±300 on X; weights from dNW (left) and dNE (right)
-			const dNW = Number(data.dNW || 0);
-			const dNE = Number(data.dNE || 0);
-			const leftAttractorX = -300;
-			const rightAttractorX = 300;
-			const wL = constrain(dNW / 255.0, 0, 1);
-			const wR = constrain(dNE / 255.0, 0, 1);
-			const wSum = wL + wR + 1e-6;
-			let x = (wL * leftAttractorX + wR * rightAttractorX) / wSum;
-			x = constrain(x, -width/2 + 20, width/2 - 20);
-			// Y: based on aY (0:-2g .. 255:+2g), clamp to [-1,1], then map to canvas height (inverted)
-			const aY_g = ((Number(data.ay || 128)) / 255.0) * 4.0 - 2.0;
-			const aY_clamped = constrain(aY_g, -1, 1);
-			const y = map(aY_clamped, -1, 1, height/2 - 20, -height/2 + 20);
-			// Update look target for this eye to this sphere's world position (relative to scene origin)
-			const worldTarget = { x: x, y: y, z: zPlane };
-			eyeDevice.setLookTarget(worldTarget.x, -worldTarget.y, -worldTarget.z);
-			push();
-			translate(x, y, 0);
-			fill(255, 255, 255, 220);
-			sphere(7);
-			pop();
-		}
-		pop();
+			const zPlane = 200;
+			// Compute and update look targets for each eye (drawing moved to drawDebugText)
+			for (const eyeDevice of this.eyeDevices.values()) {
+				const device = this.deviceManager.getDevice(eyeDevice.getId());
+				if (!device) continue;
+				const data = device.getSensorData();
+				const dNW = Number(data.dNW || 0);
+				const dNE = Number(data.dNE || 0);
+				const leftAttractorX = -300;
+				const rightAttractorX = 300;
+				const wL = constrain(dNW / 255.0, 0, 1);
+				const wR = constrain(dNE / 255.0, 0, 1);
+				const wSum = wL + wR + 1e-6;
+				let x = (wL * leftAttractorX + wR * rightAttractorX) / wSum;
+				x = constrain(x, -width/2 + 20, width/2 - 20);
+				const aY_g = ((Number(data.ay || 128)) / 255.0) * 4.0 - 2.0;
+				const aY_clamped = constrain(aY_g, -1, 1);
+				const y = map(aY_clamped, -1, 1, height/2 - 20, -height/2 + 20);
+				const worldTarget = { x: x, y: y, z: zPlane };
+				eyeDevice.setLookTarget(worldTarget.x, -worldTarget.y, -worldTarget.z);
+			}
         
         // Draw all eye devices
         for (const eyeDevice of this.eyeDevices.values()) {
@@ -305,32 +280,76 @@ class EyeDeviceScene extends Scene {
         pop();
     }
     
-    drawDebugText() {
-        // Switch to 2D mode for text rendering
-        camera();
-        
-        fill(255);
-        textAlign(LEFT, TOP);
-        textSize(16);
-        text(`Eye Devices: ${this.eyeDevices.size}`, 10, 10);
-        text('Press D to toggle debug info', 10, height - 20);
-        
-        // Show accelerometer data for each device
-        let y = 40;
-        for (const eyeDevice of this.eyeDevices.values()) {
-            const device = this.deviceManager.getDevice(eyeDevice.getId());
-            if (device) {
-                const data = device.getSensorData();
-                const aX_g = ((data.ax || 128) / 255.0) * 4.0 - 2.0;
-                const aY_g = ((data.ay || 128) / 255.0) * 4.0 - 2.0;
-                const aZ_g = ((data.az || 128) / 255.0) * 4.0 - 2.0;
-                
-                text(`ID:${data.id} aX:${aX_g.toFixed(2)}g aY:${aY_g.toFixed(2)}g aZ:${aZ_g.toFixed(2)}g`, 10, y);
-                y += 20;
-                
-                if (y > height - 40) break;
-            }
-        }
-        
-    }
+		drawDebugText() {
+			// Draw tracking grid and target spheres in debug mode
+			push();
+			translate(width/2, height/2);
+			const zPlane = 200;
+			push();
+			translate(0, 0, zPlane);
+			push();
+			stroke(80, 80, 110);
+			strokeWeight(1);
+			noFill();
+			const gridStep = 50;
+			for (let gx = -width/2; gx <= width/2; gx += gridStep) {
+				line(gx, -height/2, 0, gx, height/2, 0);
+			}
+			for (let gy = -height/2; gy <= height/2; gy += gridStep) {
+				line(-width/2, gy, 0, width/2, gy, 0);
+			}
+			pop();
+			noStroke();
+			for (const eyeDevice of this.eyeDevices.values()) {
+				const device = this.deviceManager.getDevice(eyeDevice.getId());
+				if (!device) continue;
+				const data = device.getSensorData();
+				const dNW = Number(data.dNW || 0);
+				const dNE = Number(data.dNE || 0);
+				const leftAttractorX = -300;
+				const rightAttractorX = 300;
+				const wL = constrain(dNW / 255.0, 0, 1);
+				const wR = constrain(dNE / 255.0, 0, 1);
+				const wSum = wL + wR + 1e-6;
+				let x = (wL * leftAttractorX + wR * rightAttractorX) / wSum;
+				x = constrain(x, -width/2 + 20, width/2 - 20);
+				const aY_g = ((Number(data.ay || 128)) / 255.0) * 4.0 - 2.0;
+				const aY_clamped = constrain(aY_g, -1, 1);
+				const y = map(aY_clamped, -1, 1, height/2 - 20, -height/2 + 20);
+				push();
+				translate(x, y, 0);
+				fill(255, 255, 255, 220);
+				sphere(7);
+				pop();
+			}
+			pop();
+			pop();
+			
+			// Switch to 2D mode for text rendering
+			camera();
+			
+			fill(255);
+			textAlign(LEFT, TOP);
+			textSize(16);
+			text(`Eye Devices: ${this.eyeDevices.size}`, 10, 10);
+			text('Press D to toggle debug info', 10, height - 20);
+			
+			// Show accelerometer data for each device
+			let y = 40;
+			for (const eyeDevice of this.eyeDevices.values()) {
+				const device = this.deviceManager.getDevice(eyeDevice.getId());
+				if (device) {
+					const data = device.getSensorData();
+					const aX_g = ((data.ax || 128) / 255.0) * 4.0 - 2.0;
+					const aY_g = ((data.ay || 128) / 255.0) * 4.0 - 2.0;
+					const aZ_g = ((data.az || 128) / 255.0) * 4.0 - 2.0;
+					
+					text(`ID:${data.id} aX:${aX_g.toFixed(2)}g aY:${aY_g.toFixed(2)}g aZ:${aZ_g.toFixed(2)}g`, 10, y);
+					y += 20;
+					
+					if (y > height - 40) break;
+				}
+			}
+			
+		}
 }
