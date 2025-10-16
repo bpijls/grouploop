@@ -80,3 +80,18 @@ services:
       - "5006:5000" # MkDocs documentation
     volumes:
       - ./documentation:/site
+  spotify-auth:
+    build:
+      context: ./spotify-auth
+      dockerfile: Dockerfile
+    container_name: spotify-auth
+    ports:
+      - "5180:8000" # OAuth server (host 5180 → container 8000)
+    environment:
+      - SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID}
+      - SPOTIFY_CLIENT_SECRET=${SPOTIFY_CLIENT_SECRET}
+      - SPOTIFY_REDIRECT_URI=${SPOTIFY_REDIRECT_URI}
+      - SESSION_SECRET=${SESSION_SECRET}
+      - FRONTEND_ORIGIN=${FRONTEND_ORIGIN}
+      - COOKIE_DOMAIN=${COOKIE_DOMAIN}
+    restart: unless-stopped

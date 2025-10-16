@@ -1,6 +1,9 @@
   class PopCornScene extends Scene {
     constructor(...a) {
       super(...a);
+      // Optional: set a Spotify track to loop in this scene
+      this.spotifyTrackUri = null; // e.g., 'spotify:track:3n3Ppam7vgaVa1iaRUc9Lp'
+      this.spotifyVolume = 40;
       this.dotSize = 4;
       this.targets = [];
       this.parts = [];

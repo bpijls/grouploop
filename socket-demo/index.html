@@ -12,11 +12,15 @@
     <script src="http://cdn.hitloop.feib.nl/js/HitloopDevice.js"></script>
     <script src="http://cdn.hitloop.feib.nl/js/HitloopDeviceManager.js"></script>
 
+    <script src="https://sdk.scdn.co/spotify-player.js"></script>
+
   </head>
 
   <body>
+    <a id="spotifyLoginBtn" href="#" style="position:fixed;top:10px;right:10px;background:#1DB954;color:#fff;padding:8px 12px;border-radius:4px;text-decoration:none;font-family:sans-serif;display:none;z-index:9999">Connect Spotify</a>
     <script src="Scene.js"></script>
     <script src="SceneManager.js"></script>
+    <script src="spotifyPlayer.js"></script>
     <script src="scenes/DeviceListScene.js"></script>
     <script src="scenes/FirstDeviceDetailsScene.js"></script>
     <script src="scenes/GridHeatmapScene.js"></script>
@@ -35,5 +39,15 @@
     <script src="scenes/ParticleDeviceScene.js"></script>
     <script src="scenes/EyeDeviceScene.js"></script>
     <script src="sketch.js"></script>
+    <script>
+      (function(){
+        window.SPOTIFY_OAUTH_BASE = window.SPOTIFY_OAUTH_BASE || 'http://localhost:5180';
+        const btn = document.getElementById('spotifyLoginBtn');
+        btn.onclick = function(e){ e.preventDefault(); window.location.href = window.SPOTIFY_OAUTH_BASE + '/login'; };
+        fetch((window.SPOTIFY_OAUTH_BASE||'') + '/access_token', { credentials: 'include' })
+          .then(r=>{ if(r.status===401) { btn.style.display='inline-block'; } else { btn.style.display='none'; } })
+          .catch(()=>{ btn.style.display='inline-block'; });
+      })();
+    </script>
   </body>
 </html>
