@@ -1,25 +1,26 @@
 // Create device manager instance
 const deviceManager = new HitloopDeviceManager('ws://feib.nl:5003');
-const gameStateManager = new SceneManager(deviceManager);
+const sceneManager = new SceneManager(deviceManager);
+let fullScreenMode = false;
 
 // Register example game states
-// gameStateManager.addScene('list', new DeviceListScene(deviceManager));
-// gameStateManager.addScene('first', new FirstDeviceDetailsScene(deviceManager));
-// gameStateManager.addScene('heatmap', new GridHeatmapScene(deviceManager));
-// gameStateManager.addScene('circles', new StateDeviceCirclesScene(deviceManager));
-// gameStateManager.addScene('physics', new PartialPhysicsScene(deviceManager));
-// gameStateManager.addScene('physicsWithGlow', new PartialPhysicsWithGlowScene(deviceManager));
-// gameStateManager.addScene('wander', new WanderingAttractorsScene(deviceManager));
-// gameStateManager.addScene('prototype', new PrototypeScene(deviceManager));
-// gameStateManager.addScene('challenge1', new ChallengeOneScene(deviceManager));
-gameStateManager.addScene('move', new MoveScene(deviceManager));
-gameStateManager.addScene('playground', new Playground(deviceManager));
-gameStateManager.addScene('reveal', new ChallengeImageReveal(deviceManager));
-gameStateManager.addScene('popcorn', new PopCornScene(deviceManager));
-gameStateManager.addScene('hats', new HatsScene(deviceManager));
-gameStateManager.addScene('particles', new ParticleDeviceScene(deviceManager));
-gameStateManager.addScene('eyes', new EyeDeviceScene(deviceManager));
-gameStateManager.addScene('earth', new EarthScene(deviceManager));
+// sceneManager.addScene('list', new DeviceListScene(deviceManager));
+// sceneManager.addScene('first', new FirstDeviceDetailsScene(deviceManager));
+// sceneManager.addScene('heatmap', new GridHeatmapScene(deviceManager));
+// sceneManager.addScene('circles', new StateDeviceCirclesScene(deviceManager));
+// sceneManager.addScene('physics', new PartialPhysicsScene(deviceManager));
+// sceneManager.addScene('physicsWithGlow', new PartialPhysicsWithGlowScene(deviceManager));
+// sceneManager.addScene('wander', new WanderingAttractorsScene(deviceManager));
+// sceneManager.addScene('prototype', new PrototypeScene(deviceManager));
+// sceneManager.addScene('challenge1', new ChallengeOneScene(deviceManager));
+sceneManager.addScene('move', new MoveScene(deviceManager));
+sceneManager.addScene('playground', new Playground(deviceManager));
+sceneManager.addScene('reveal', new ChallengeImageReveal(deviceManager));
+sceneManager.addScene('popcorn', new PopCornScene(deviceManager));
+sceneManager.addScene('hats', new HatsScene(deviceManager));
+sceneManager.addScene('particles', new ParticleDeviceScene(deviceManager));
+sceneManager.addScene('eyes', new EyeDeviceScene(deviceManager));
+sceneManager.addScene('earth', new EarthScene(deviceManager));
 
 let uiFont;
 
@@ -37,24 +38,29 @@ function setup() {
     // Connect to WebSocket server
     deviceManager.connect();
     // Default state
-    gameStateManager.switchTo('popcorn');
+    sceneManager.switchTo('popcorn');
 }
 
 function draw() {
     push();
     translate(-width/2, -height/2);
-    gameStateManager.draw();
+    sceneManager.draw();
     pop();
 }
 
 function keyPressed() {
     if (keyCode === RIGHT_ARROW) {
-        gameStateManager.nextScene();
+        sceneManager.nextScene();
     } else if (keyCode === LEFT_ARROW) {
-        gameStateManager.previousScene();
+        sceneManager.previousScene();
+    } else if (key === 'f') {
+        fullscreen(fullScreenMode);
+        fullScreenMode = !fullScreenMode;
+        resizeCanvas(windowWidth, windowHeight);
+
     } else {
         // Pass other key events to the current scene
-        gameStateManager.keyPressed();
+        sceneManager.keyPressed();
     }
 }
 
