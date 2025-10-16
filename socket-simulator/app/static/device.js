@@ -13,6 +13,9 @@ class Device {
 		this.color = color;
 		this.ws = null;
     this.vel = createVector(vx, 0, vz);
+		// Tap state
+		this._tapActive = false;
+		this._tapUntilTs = 0;
 	}
 
 	connect(wsUrl) {
@@ -48,6 +51,23 @@ class Device {
       constrain(this.angularVelocity.z, -maxRZ, maxRZ)
     );
     this.orientation.add(this.angularVelocity.copy().mult(dtSeconds));
+
+		// Update tap decay based on configured duration
+		if (this._tapActive && performance.now() >= this._tapUntilTs) {
+			this._tapActive = false;
+		}
+
+		// Randomly trigger taps based on Poisson process (per-second rate)
+		const rate = Math.max(0, (window.cfg.sim && window.cfg.sim.tap && window.cfg.sim.tap.ratePerSecond) || 0);
+		if (rate > 0) {
+			// probability in this frame ~ rate * dt
+			const p = rate * dtSeconds;
+			if (!this._tapActive && Math.random() < p) {
+				const dur = (window.cfg.sim && window.cfg.sim.tap && window.cfg.sim.tap.durationMs) || 200;
+				this._tapActive = true;
+				this._tapUntilTs = performance.now() + dur;
+			}
+		}
 	}
 
 	getAccelerometer() {
@@ -94,7 +114,8 @@ class Device {
     }
     const { dTL, dTR, dBR, dBL } = this.getBeaconDistances(world);
 		const idHex = toHexWord(this.id);
-		const frame = `${idHex}${toHexByte(ax)}${toHexByte(ay)}${toHexByte(az)}${toHexByte(dTL)}${toHexByte(dTR)}${toHexByte(dBR)}${toHexByte(dBL)}\n`;
+		const tapByte = this._tapActive ? 255 : 0;
+		const frame = `${idHex}${toHexByte(ax)}${toHexByte(ay)}${toHexByte(az)}${toHexByte(dTL)}${toHexByte(dTR)}${toHexByte(dBR)}${toHexByte(dBL)}${toHexByte(tapByte)}\n`;
 		return frame.toLowerCase();
 	}
 

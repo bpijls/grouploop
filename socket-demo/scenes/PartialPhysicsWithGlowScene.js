@@ -617,9 +617,6 @@ class PartialPhysicsWithGlowScene extends Scene {
     this._drawWord();
     this._drawMagnets();
 
-    fill(255);
-    noStroke();
-    text(`Devices: ${count}`, 10, 20);
 
     for (const { x, y, d } of devPositions) {
       noStroke();
@@ -638,5 +635,14 @@ class PartialPhysicsWithGlowScene extends Scene {
       ellipse(x - 16 + ex, y - 10 + ey, 12, 12);
       ellipse(x + 16 + ex, y - 10 + ey, 12, 12);
     }
+  }
+  
+  drawDebugText() {
+    blendMode(BLEND);
+    fill(255);
+    textAlign(LEFT, TOP);
+    textSize(16);
+    text(`Devices: ${this.deviceManager.getDeviceCount()}`, 10, 20);
+    text('Press D to toggle debug info', 10, height - 20);
   }
 }

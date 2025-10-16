@@ -147,7 +147,6 @@ class PartialPhysicsScene extends Scene {
     if(this.mode==='default') this._drawStars(); else this._drawWord();
 
     // draw device circles with eyes
-    text(`Devices: ${dm.getDeviceCount()}`,10,20);
     noStroke();
     for(let i=0;i<devPos.length;i++){
       const {x,y}=devPos[i];
@@ -165,5 +164,14 @@ class PartialPhysicsScene extends Scene {
       ellipse(x-12+ex,y-8+ey,8,8);
       ellipse(x+12+ex,y-8+ey,8,8);
     }
+  }
+  
+  drawDebugText() {
+    blendMode(BLEND);
+    fill(255);
+    textAlign(LEFT, TOP);
+    textSize(16);
+    text(`Devices: ${this.deviceManager.getDeviceCount()}`, 10, 20);
+    text('Press 1 to toggle mode, D for debug info', 10, height - 20);
   }
 }

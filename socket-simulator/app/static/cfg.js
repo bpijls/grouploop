@@ -22,6 +22,11 @@ window.cfg = {
 			rotX: 1.2,
 			rotY: 1.2,
 		},
+			// Tap simulation parameters
+			tap: {
+				ratePerSecond: 0.2, // average taps per second per device
+				durationMs: 200 // how long tap stays active
+			},
 	},
 	world: {
 		gridWidth: 800,

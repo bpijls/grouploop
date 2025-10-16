@@ -60,11 +60,16 @@ class GridHeatmapScene extends Scene {
         
         // Reset text alignment
         textAlign(LEFT);
-        
-        // Display info
+    }
+    
+    drawDebugText() {
+        blendMode(BLEND);
         fill(255);
-        text(`Devices: ${devices.length}`, 10, 20);
-        text('Size: movement magnitude, Color: accelerometer (R:ax, G:ay, B:az)', 10, height - 10);
+        textAlign(LEFT, TOP);
+        textSize(16);
+        text(`Devices: ${this.deviceManager.getDeviceCount()}`, 10, 20);
+        text('Size: movement magnitude, Color: accelerometer (R:ax, G:ay, B:az)', 10, height - 30);
+        text('Press D to toggle debug info', 10, height - 10);
     }
 }
 
