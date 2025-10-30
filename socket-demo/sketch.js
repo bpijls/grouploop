@@ -13,14 +13,16 @@ const gameStateManager = new SceneManager(deviceManager);
 // gameStateManager.addScene('prototype', new PrototypeScene(deviceManager));
 // gameStateManager.addScene('challenge1', new ChallengeOneScene(deviceManager));
 gameStateManager.addScene('start', new StartScene(deviceManager));
-gameStateManager.addScene('move', new MoveScene(deviceManager));
-gameStateManager.addScene('playground', new Playground(deviceManager));
-gameStateManager.addScene('reveal', new ChallengeImageReveal(deviceManager));
-gameStateManager.addScene('popcorn', new PopCornScene(deviceManager));
-gameStateManager.addScene('hats', new HatsScene(deviceManager));
-gameStateManager.addScene('particles', new ParticleDeviceScene(deviceManager));
-gameStateManager.addScene('eyes', new EyeDeviceScene(deviceManager));
-gameStateManager.addScene('earth', new EarthScene(deviceManager));
+gameStateManager.addScene('two', new TwoTeamsScene(deviceManager));
+
+// gameStateManager.addScene('move', new MoveScene(deviceManager));
+// gameStateManager.addScene('playground', new Playground(deviceManager));
+// gameStateManager.addScene('reveal', new ChallengeImageReveal(deviceManager));
+// gameStateManager.addScene('popcorn', new PopCornScene(deviceManager));
+// gameStateManager.addScene('hats', new HatsScene(deviceManager));
+// gameStateManager.addScene('particles', new ParticleDeviceScene(deviceManager));
+// gameStateManager.addScene('eyes', new EyeDeviceScene(deviceManager));
+// gameStateManager.addScene('earth', new EarthScene(deviceManager));
 
 let uiFont;
 
@@ -46,6 +48,7 @@ function draw() {
     translate(-width/2, -height/2);
     gameStateManager.draw();
     pop();
+    if (window.Instructions) window.Instructions.draw();
 }
 
 function keyPressed() {
