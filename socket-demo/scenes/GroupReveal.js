@@ -228,8 +228,8 @@
     _drawCoverDots() {
       push();
       noStroke();
-      // Light blue #69CBFF
-      const nr = 105, ng = 203, nb = 255;
+      // Softer blue #AAC8E1 (lower contrast)
+      const nr = 170, ng = 200, nb = 225;
       fill(nr, ng, nb);
       for (const d of this.coverDots) {
         if (d.state === "gone") continue;

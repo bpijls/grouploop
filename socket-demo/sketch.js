@@ -22,6 +22,10 @@ const gameStateManager = new SceneManager(deviceManager);
 // gameStateManager.addScene('hats', new HatsScene(deviceManager));
 // gameStateManager.addScene('particles', new ParticleDeviceScene(deviceManager));
 //  gameStateManager.addScene('eyes', new EyeDeviceScene(deviceManager));
+ 
+gameStateManager.addScene('rainyDaySingle', new RainyDaySingle(deviceManager));
+gameStateManager.addScene('particles', new Particles(deviceManager));
+// gameStateManager.addScene('rainyDayGroup', new RainyDayGroup(deviceManager));
 gameStateManager.addScene('twoPlanets', new TwoPlanets(deviceManager));
 gameStateManager.addScene('threePlanets', new ThreePlanets(deviceManager));
 gameStateManager.addScene('reveal', new GroupReveal(deviceManager));
@@ -42,7 +46,7 @@ function setup() {
     // Connect to WebSocket server
     deviceManager.connect();
     // Default state
-    gameStateManager.switchTo('reveal');
+    gameStateManager.switchTo('rainyDaySingle');
 }
 
 function draw() {
