@@ -12,8 +12,8 @@ const gameStateManager = new SceneManager(deviceManager);
 // gameStateManager.addScene('wander', new WanderingAttractorsScene(deviceManager));
 // gameStateManager.addScene('prototype', new PrototypeScene(deviceManager));
 // gameStateManager.addScene('challenge1', new ChallengeOneScene(deviceManager));
-gameStateManager.addScene('start', new StartScene(deviceManager));
-gameStateManager.addScene('two', new TwoTeamsScene(deviceManager));
+// gameStateManager.addScene('start', new StartScene(deviceManager));
+// gameStateManager.addScene('two', new TwoTeamsScene2(deviceManager));
 
 // gameStateManager.addScene('move', new MoveScene(deviceManager));
 // gameStateManager.addScene('playground', new Playground(deviceManager));
@@ -21,8 +21,10 @@ gameStateManager.addScene('two', new TwoTeamsScene(deviceManager));
 // gameStateManager.addScene('popcorn', new PopCornScene(deviceManager));
 // gameStateManager.addScene('hats', new HatsScene(deviceManager));
 // gameStateManager.addScene('particles', new ParticleDeviceScene(deviceManager));
-// gameStateManager.addScene('eyes', new EyeDeviceScene(deviceManager));
-// gameStateManager.addScene('earth', new EarthScene(deviceManager));
+//  gameStateManager.addScene('eyes', new EyeDeviceScene(deviceManager));
+gameStateManager.addScene('twoPlanets', new TwoPlanets(deviceManager));
+gameStateManager.addScene('threePlanets', new ThreePlanets(deviceManager));
+gameStateManager.addScene('reveal', new GroupReveal(deviceManager));
 
 let uiFont;
 
@@ -40,7 +42,7 @@ function setup() {
     // Connect to WebSocket server
     deviceManager.connect();
     // Default state
-    gameStateManager.switchTo('start');
+    gameStateManager.switchTo('reveal');
 }
 
 function draw() {

@@ -10,6 +10,7 @@ class Particle {
         this.bounces = 0;
         this.maxBounces = random(3, 6);
         this.isMoving = false;
+        this.particleColor = color(100, 150, 255, 100);
         
         // Create 4 vertices around center with random offsets
         this.vertices = [];
@@ -62,7 +63,7 @@ class Particle {
         rotate(this.rotation);
         
         // Draw blue polygon with transparency
-        fill(100, 150, 255, 100);
+        fill(this.particleColor);
         noStroke();
         
         beginShape();
@@ -104,15 +105,22 @@ class Particle {
 class ParticleSystem {
     constructor() {
         this.particles = [];
-        this.maxParticles = 500;
+        this.maxParticles = 1000;
         this.minDistance = 40; // Minimum distance between particles
     }
     
     setup() {
-        // Use Poisson-disc sampling to distribute particles
+        // Use Poisson-disc sampling to distribute particles        
         this.particles = this.generatePoissonDisc();
     }
     
+
+    setColor(newColor){
+        for (const particle of this.particles) {
+            particle.particleColor = newColor;
+        }
+    }
+
     generatePoissonDisc() {
         const particles = [];
         const grid = [];
@@ -255,7 +263,6 @@ class DeviceCircle {
         this.assignedColor = randomColor;
         
         // Send commands to device
-        this.deviceManager.sendCommandToDevice(this.id, 'pattern', 'heartbeat');
         this.deviceManager.sendCommandToDevice(this.id, 'led', randomColor.hex);
     }
     
