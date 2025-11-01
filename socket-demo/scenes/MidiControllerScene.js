@@ -1,13 +1,15 @@
 class MidiController {
-    constructor(beatVolumeCC = 1, filterValueCC = 2, tuneCC = 3, rimVolumeCC = 4, crashVolumeCC = 5) {
+    constructor(beatVolumeCC = 1, filterValueCC = 2, tuneCC = 3, rimVolumeCC = 4, crashVolumeCC = 5, filter2CC = 6) {
         this.beatVolumeCC = beatVolumeCC;
         this.filterValueCC = filterValueCC;
         this.tuneCC = tuneCC;
         this.rimVolumeCC = rimVolumeCC;
         this.crashVolumeCC = crashVolumeCC;
+        this.filter2CC = filter2CC;
         this.previousBeatVolume = 0;
         this.previousFilterValue = 0;
-        this.trainingMode = null; // null = normal, 1-5 = training mode for that channel
+        this.previousFilter2Value = 0;
+        this.trainingMode = null; // null = normal, 1-6 = training mode for that channel
     }
 
     sendBeatVolume(value) {
@@ -32,9 +34,20 @@ class MidiController {
         }
     }
 
+    sendFilter2(value) {
+        if (window.grouploopOutput) {
+            try {
+                const roundedValue = Math.round(value);
+                window.grouploopOutput.sendControlChange(this.filter2CC, roundedValue, 1);
+            } catch (error) {
+                console.error('Error sending filter2 MIDI:', error);
+            }
+        }
+    }
+
     // Training mode methods
     setTrainingMode(channel) {
-        // channel: 0 = normal, 1 = beatVolume, 2 = filter, 3 = tune, 4 = rimVolume, 5 = crashVolume
+        // channel: 0 = normal, 1 = beatVolume, 2 = filter, 3 = tune, 4 = rimVolume, 5 = crashVolume, 6 = filter2
         this.trainingMode = channel;
 
         if (channel === 0) {
@@ -65,6 +78,8 @@ class MidiController {
                 return "rimVolume (CC " + this.rimVolumeCC + ")";
             case 5:
                 return "crashVolume (CC " + this.crashVolumeCC + ")";
+            case 6:
+                return "filter2 (CC " + this.filter2CC + ")";
             default:
                 return "Unknown";
         }
@@ -80,6 +95,7 @@ class MidiController {
             window.grouploopOutput.sendControlChange(this.tuneCC, 0, 1);
             window.grouploopOutput.sendControlChange(this.rimVolumeCC, 0, 1);
             window.grouploopOutput.sendControlChange(this.crashVolumeCC, 0, 1);
+            window.grouploopOutput.sendControlChange(this.filter2CC, 0, 1);
         } catch (error) {
             console.error('Error silencing channels:', error);
         }
@@ -107,6 +123,9 @@ class MidiController {
                 case 5:
                     window.grouploopOutput.sendControlChange(this.crashVolumeCC, randomValue, 1);
                     break;
+                case 6:
+                    window.grouploopOutput.sendControlChange(this.filter2CC, randomValue, 1);
+                    break;
             }
         } catch (error) {
             console.error('Error sending random value on channel:', error);
@@ -115,7 +134,7 @@ class MidiController {
 
     update() {
         // In training mode, send random values on the active channel
-        if (this.trainingMode && this.trainingMode > 0 && this.trainingMode <= 5) {
+        if (this.trainingMode && this.trainingMode > 0 && this.trainingMode <= 6) {
             // Send random value every few frames (not every frame to avoid MIDI spam)
             if (frameCount % 30 === 0) { // Every 30 frames (~0.5 seconds at 60fps)
                 this.sendRandomValueOnChannel(this.trainingMode);
@@ -140,6 +159,16 @@ class MidiController {
             if (rounded !== Math.round(this.previousFilterValue)) {
                 this.sendFilterValue(rounded);
                 this.previousFilterValue = currentValue;
+            }
+        }
+    }
+
+    updateFilter2(currentValue) {
+        if (this.trainingMode === null || this.trainingMode === 0) {
+            const rounded = Math.round(currentValue);
+            if (rounded !== Math.round(this.previousFilter2Value)) {
+                this.sendFilter2(rounded);
+                this.previousFilter2Value = currentValue;
             }
         }
     }
@@ -920,7 +949,7 @@ class MidiControllerScene extends Scene {
         this.rightAttractor = null;
 
         // Modular components
-        this.midiController = new MidiController(1, 2); // CC 1 for beatVolume, CC 2 for filterValue
+        this.midiController = new MidiController(1, 2, 3, 4, 5, 6); // CC 1=beatVolume, CC 2=filterValue, CC 3=tune, CC 4=rimVolume, CC 5=crashVolume, CC 6=filter2
         this.meshRenderer = new MeshRenderer(150);
         this.movementCircle = new MovementCircle(
             0.8, 
@@ -947,7 +976,8 @@ class MidiControllerScene extends Scene {
         this.beatVolumeCoolDown = 0.3; // Amount to decrease each frame
 
         // Filter value parameters
-        this.filterValue = 0; // Ranges from 0 to 127, based on average aZ of blue devices
+        this.filterValue = 0; // Ranges from 0 to 127, based on average aZ of all devices
+        this.filter2Value = 0; // Ranges from 0 to 127, based on average aZ of all devices
         
         // Current frame representations (updated in updateScene, used in drawScene)
         this.allRepresentations = [];
@@ -1099,30 +1129,36 @@ class MidiControllerScene extends Scene {
         // Recalculate representations after cleanup
         this.allRepresentations = Array.from(this.representations.values());
         
-        // Calculate filterValue based on average aZ of blue devices
-        const blueReps = this.allRepresentations.filter(r => !r.attractedToLeft);
-        
-        if (blueReps.length > 0) {
-            // Calculate average aZ value of blue devices
+        // Calculate filterValue and filter2Value based on average aZ of ALL devices
+        if (this.allRepresentations.length > 0) {
+            // Calculate average aZ value of all devices
             let sumAZ = 0;
-            for (const rep of blueReps) {
+            for (const rep of this.allRepresentations) {
                 const data = rep.device.getSensorData();
                 sumAZ += data.az || 0;
             }
-            const avgAZ = sumAZ / blueReps.length;
+            const avgAZ = sumAZ / this.allRepresentations.length;
             
-            // Map aZ from 0-255 to filterValue 127-0 (inverse relationship)
-            // When aZ = 0, filterValue = 127
-            // When aZ = 255, filterValue = 0
-            this.filterValue = map(avgAZ, 0, 255, 127, 0);
+            // Map aZ for filter1 (filter):
+            // aZ = 191 → filter = 0
+            // aZ = 64 → filter = 127
+            this.filterValue = map(avgAZ, 191, 64, 0, 127);
             this.filterValue = constrain(this.filterValue, 0, 127);
+            
+            // Map aZ for filter2:
+            // aZ = 191 → filter2 = 127
+            // aZ = 64 → filter2 = 0
+            this.filter2Value = map(avgAZ, 191, 64, 127, 0);
+            this.filter2Value = constrain(this.filter2Value, 0, 127);
         } else {
-            // No blue devices, set filterValue to 0
+            // No devices, set filter values to 0
             this.filterValue = 0;
+            this.filter2Value = 0;
         }
         
-        // Update MIDI controller with current filterValue
+        // Update MIDI controller with current filterValue and filter2Value
         this.midiController.updateFilterValue(this.filterValue);
+        this.midiController.updateFilter2(this.filter2Value);
         
         // Update red attractor size based on beatVolume
         // Size = 50 when beatVolume = 0, size = 150 when beatVolume = 127
@@ -1235,7 +1271,7 @@ class MidiControllerScene extends Scene {
         super.keyPressed(); // Call parent to handle 'd' for debug
 
         // Handle numeric keys for training mode
-        if (key >= '0' && key <= '5') {
+        if (key >= '0' && key <= '6') {
             const channel = parseInt(key);
             this.midiController.setTrainingMode(channel);
 
@@ -1260,7 +1296,7 @@ class MidiControllerScene extends Scene {
         text(`MIDI Mode: ${trainingState}`, 10, 40);
 
         fill(255);
-        text('Training: 1=beatVolume, 2=filter, 3=tune, 4=rimVolume, 5=crashVolume, 0=normal', 10, 60);
+        text('Training: 1=beatVolume, 2=filter, 3=tune, 4=rimVolume, 5=crashVolume, 6=filter2, 0=normal', 10, 60);
         text('Flocking behavior with attractors based on dNW/dNE', 10, height - 30);
         text('Press D to toggle debug info', 10, height - 10);
     }
