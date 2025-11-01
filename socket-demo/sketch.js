@@ -2,6 +2,32 @@
 const deviceManager = new HitloopDeviceManager('ws://feib.nl:5003');
 const sceneManager = new SceneManager(deviceManager);
 let fullScreenMode = false;
+let grouploopOutput = null;
+// Make grouploopOutput globally accessible
+window.grouploopOutput = null;
+
+// Initialize WebMidi and connect to "grouploop" device
+WebMidi.enable()
+    .then(() => {
+        console.log('WebMidi enabled successfully');
+        
+        // Find and connect to the "grouploop" output device
+        grouploopOutput = WebMidi.getOutputByName("grouploop");
+        
+        if (grouploopOutput) {
+            console.log('Connected to grouploop MIDI device:', grouploopOutput.name);
+            // Make it globally accessible
+            window.grouploopOutput = grouploopOutput;
+        } else {
+            console.warn('grouploop MIDI device not found. Available devices:');
+            WebMidi.outputs.forEach(output => {
+                console.log('  -', output.name);
+            });
+        }
+    })
+    .catch(err => {
+        console.error('WebMidi could not be enabled:', err);
+    });
 
 // Register example game states
 // sceneManager.addScene('list', new DeviceListScene(deviceManager));
@@ -13,14 +39,15 @@ let fullScreenMode = false;
 // sceneManager.addScene('wander', new WanderingAttractorsScene(deviceManager));
 // sceneManager.addScene('prototype', new PrototypeScene(deviceManager));
 // sceneManager.addScene('challenge1', new ChallengeOneScene(deviceManager));
-sceneManager.addScene('move', new MoveScene(deviceManager));
-sceneManager.addScene('playground', new Playground(deviceManager));
-sceneManager.addScene('reveal', new ChallengeImageReveal(deviceManager));
-sceneManager.addScene('popcorn', new PopCornScene(deviceManager));
-sceneManager.addScene('hats', new HatsScene(deviceManager));
-sceneManager.addScene('particles', new ParticleDeviceScene(deviceManager));
-sceneManager.addScene('eyes', new EyeDeviceScene(deviceManager));
-sceneManager.addScene('earth', new EarthScene(deviceManager));
+// sceneManager.addScene('move', new MoveScene(deviceManager));
+// sceneManager.addScene('playground', new Playground(deviceManager));
+// sceneManager.addScene('reveal', new ChallengeImageReveal(deviceManager));
+// sceneManager.addScene('popcorn', new PopCornScene(deviceManager));
+// sceneManager.addScene('hats', new HatsScene(deviceManager));
+// sceneManager.addScene('particles', new ParticleDeviceScene(deviceManager));
+// sceneManager.addScene('eyes', new EyeDeviceScene(deviceManager));
+// sceneManager.addScene('earth', new EarthScene(deviceManager));
+sceneManager.addScene('midi', new MidiControllerScene(deviceManager));
 
 let uiFont;
 
@@ -38,7 +65,7 @@ function setup() {
     // Connect to WebSocket server
     deviceManager.connect();
     // Default state
-    sceneManager.switchTo('popcorn');
+    sceneManager.switchTo('midi');
 }
 
 function draw() {
