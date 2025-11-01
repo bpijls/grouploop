@@ -53,7 +53,8 @@ let uiFont;
 
 function preload() {
     // Load a web-safe TTF so WEBGL text rendering is enabled
-    uiFont = loadFont('https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxP.ttf');
+    //uiFont = loadFont('https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxP.ttf');
+    uiFont = loadFont('https://fonts.gstatic.com/s/momotrustdisplay/v2/WWXPlieNYgyPZLyBUuEkKZFhFHyjqb1un2xNNgNa1A.ttf');
 }
 
 function setup() {
