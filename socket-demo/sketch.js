@@ -21,7 +21,6 @@ const gameStateManager = new SceneManager(deviceManager);
 // gameStateManager.addScene('popcorn', new PopCornScene(deviceManager));
 // gameStateManager.addScene('particles', new ParticleDeviceScene(deviceManager));
 //  gameStateManager.addScene('eyes', new EyeDeviceScene(deviceManager));
-// gameStateManager.addScene('rainyDayGroup', new RainyDayGroup(deviceManager));
  
 gameStateManager.addScene('rainyDaySingle', new RainyDaySingle(deviceManager));
 gameStateManager.addScene('particles', new Particles(deviceManager));
@@ -30,6 +29,8 @@ gameStateManager.addScene('threePlanets', new ThreePlanets(deviceManager));
 gameStateManager.addScene('race', new Race(deviceManager));
 gameStateManager.addScene('reveal', new GroupReveal(deviceManager));
 gameStateManager.addScene('hats', new HatsScene(deviceManager));
+
+gameStateManager.addScene('rainyDayGroup', new RainyDayGroup(deviceManager));
 
 let uiFont;
 
