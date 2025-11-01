@@ -660,15 +660,36 @@ class DeviceRepresentation {
 
         // Determine which attractor this is attracted to
         this.attractedToLeft = false;
+        this.previousAttractedToLeft = null; // Track previous attraction state to detect color changes (null = initial state)
         this.previousTap = false; // Track previous tap state for edge detection
         this.updateAttraction();
+        
+        // Send initial color to device
+        this.sendColorToDevice();
     }
 
     updateAttraction() {
         const data = this.device.getSensorData();
         // dNW > dNE means attracted to left attractor
         // dNE > dNW means attracted to right attractor
-        this.attractedToLeft = (data.dNW || 0) > (data.dNE || 0);
+        const newAttractedToLeft = (data.dNW || 0) > (data.dNE || 0);
+        
+        // Check if color changed and send command to device
+        if (newAttractedToLeft !== this.attractedToLeft) {
+            this.attractedToLeft = newAttractedToLeft;
+            this.sendColorToDevice();
+        }
+    }
+
+    sendColorToDevice() {
+        // Convert color to format expected by HitloopDevice
+        // Use named colors: 'red' or 'blue'
+        const colorName = this.attractedToLeft ? 'red' : 'blue';
+        
+        // Send LED command to device
+        if (this.device && this.device.sendCommand) {
+            this.device.sendCommand('led', colorName);
+        }
     }
 
     getColor() {
