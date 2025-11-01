@@ -348,7 +348,7 @@ class RainyDaySingle extends Scene {
     fill(255);
     noStroke();
     textSize(16);
-    text(`Devices: ${count}`, 10, 20);
+    // text(`Devices: ${count}`, 10, 20);
   }
 
   _drawStars() {

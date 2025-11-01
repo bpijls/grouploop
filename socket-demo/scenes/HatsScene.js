@@ -382,7 +382,7 @@ class HatsScene extends Scene {
 
     fill(255);
     noStroke();
-    text(`Devices: ${count}`, 10, 20);
+    // text(`Devices: ${count}`, 10, 20);
 
     for (const { x, y, d, key } of devPositions) {
       // Spawn a one-shot ripple when tap goes from false -> true

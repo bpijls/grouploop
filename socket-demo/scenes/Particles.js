@@ -10,7 +10,7 @@ class Particle {
         this.bounces = 0;
         this.maxBounces = random(3, 6);
         this.isMoving = false;
-        this.particleColor = color(100, 150, 255, 100);
+        this.particleColor = color(65, 98, 166, 100); // Reduced brightness (65% of original blue)
         
         // Create 4 vertices around center with random offsets
         this.vertices = [];

@@ -512,7 +512,7 @@
   
       fill(255);
       noStroke();
-      text(`Devices: ${count}`, 10, 20);
+      // text(`Devices: ${count}`, 10, 20);
   
       // Draw devices inside their team planet
       for (const key of ['blue', 'red', 'green']) {

@@ -15,14 +15,27 @@
       this._preSoundFired = false;
       this._dtEma = 16.7; // ms, EMA of frame time
       this.sndMap = {
-        w: "sounds/welcome-to-hitloop.mp3",
-        s: "sounds/shake-controller.mp3",
+        // w: "sounds/welcome-to-hitloop.mp3",
+        // s: "sounds/shake-controller.mp3",
       };
       this._snds = {};
       this.keyMap = {
         w: "Welcome\nto Hitloop",
-        s: "Shake the controller",
-        2: "Two teams"
+        k: "Kantel\n de controller",
+        1: "↑ omhoog",
+        2: "↓ omlaag",
+        3: "← links",
+        4: "→ rechts",
+        s: "Schudden",
+        z: "Sta bij je team",
+        x: "Blauw bij blauw",
+        c: "Rood bij rood",
+        v: "Groen bij groen",
+        d: "Ga door",
+        f: "Bedankt voor uw deelname!",
+        n: "Next group,\n Get ready!",
+        // s: "Shake the controller",
+        // 2: "Two teams"
       };
       this._onKeyDown = (e) => {
         const k = (e.key || "").toLowerCase();
@@ -100,7 +113,7 @@
         pg.text(lines[i], width / 2, y0 + i * lineH);
       pg.loadPixels();
       const m = 40,
-        g = 8,
+        g = 5,
         stepX = g,
         stepY = g * 0.866025403784;
       for (let y = m, row = 0; y < height - m; y += stepY, row++) {
@@ -219,8 +232,8 @@
       fill(255, this.alpha);
       let moving = false, maxErr = 0;
       for (const p of this.dots) {
-        p.x += (p.tx - p.x) / 30;
-        p.y += (p.ty - p.y) / 30;
+        p.x += (p.tx - p.x) / 18;
+        p.y += (p.ty - p.y) / 18;
         const ex = p.tx - p.x, ey = p.ty - p.y;
         const err = Math.hypot(ex, ey);
         if (err > 0.15) moving = true;
