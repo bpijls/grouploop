@@ -10,7 +10,7 @@ class Particle {
         this.bounces = 0;
         this.maxBounces = random(3, 6);
         this.isMoving = false;
-        this.particleColor = color(100, 150, 255, 100);
+        this.particleColor = color(65, 98, 166, 100); // Reduced brightness (65% of original blue)
         
         // Create 4 vertices around center with random offsets
         this.vertices = [];
@@ -229,24 +229,32 @@ class ParticleSystem {
 }
 
 class DeviceCircle {
-    constructor(deviceId, deviceManager, availableColors) {
+    constructor(deviceId, deviceManager, availableColors, movementParams) {
         this.id = deviceId;
         this.deviceManager = deviceManager;
         this.availableColors = availableColors;
+        this.movementParams = movementParams || {
+            deviceRadius: 40,
+            horizontalGain: 2.5,
+            verticalGain: 2.5,
+            deadzone: 0.05,
+            maxSpeed: 3.0,
+            friction: 0.92,
+        };
         
         // Physical properties
-        this.radius = 30;
+        this.radius = this.movementParams.deviceRadius;
         this.shrinkRadius = 15;
         this.shrinkDuration = 300; // milliseconds
         
-        // Position and movement
+        // Position and movement state (same as RainyDaySingle)
         this.position = {
             x: random(this.radius, width - this.radius),
-            y: height / 2 // Start at center height
+            y: random(this.radius, height - this.radius),
         };
         this.velocity = {
-            vx: random(-1, 1),
-            vy: 0 // No initial vertical velocity
+            vx: 0,
+            vy: 0,
         };
         
         // Visual properties
@@ -266,39 +274,47 @@ class DeviceCircle {
         this.deviceManager.sendCommandToDevice(this.id, 'led', randomColor.hex);
     }
     
+    _normAccel(v) {
+        if (v == null) return 0;
+        if (v >= -1.5 && v <= 1.5) return constrain(v, -1, 1);
+        if (v >= -20 && v <= 20) return constrain(v / 9.81, -1, 1);
+        if (v >= 0 && v <= 255) return constrain((v - 127.5) / 127.5, -1, 1);
+        return constrain(v, -1, 1);
+    }
+    
     update(sensorData) {
         // Check for tap sensor input
         if (sensorData.tap && sensorData.tap > 0) {
             this.handleTap();
         }
         
-        // Convert accelerometer data to g-force units
-        // Mapping: 0 = -2g, 255 = +2g
-        const aX_g = ((sensorData.ax || 0) / 255.0) * 4.0 - 2.0; // Convert to g-force
-        const aY_g = ((sensorData.ay || 0) / 255.0) * 4.0 - 2.0; // Convert to g-force
+        // Use same movement system as RainyDaySingle
+        const ax = this._normAccel(sensorData.ax ?? sensorData.aX ?? sensorData.accX);
+        const ay = this._normAccel(sensorData.ay ?? sensorData.aY ?? sensorData.accY);
         
-        // Map g-force to velocity (inverted X-axis)
-        const maxVel = 3.0;
-        this.velocity.vx = -(aX_g - 0) * maxVel; // Inverted X-axis
-        this.velocity.vy = (aY_g - 0) * maxVel;
+        // Horizontal movement: ay controls left/right
+        if (Math.abs(ay) > this.movementParams.deadzone) {
+            this.velocity.vx += ay * this.movementParams.horizontalGain;
+        }
         
-        // Add some damping to prevent excessive movement
-        this.velocity.vx *= 0.95;
-        this.velocity.vy *= 0.95;
+        // Vertical movement: ax controls up/down
+        if (Math.abs(ax) > this.movementParams.deadzone) {
+            this.velocity.vy += -ax * this.movementParams.verticalGain; // negative because ax>0 should move up
+        }
         
-        // Update position based on velocity
+        // Apply friction and limits
+        this.velocity.vx *= this.movementParams.friction;
+        this.velocity.vy *= this.movementParams.friction;
+        this.velocity.vx = constrain(this.velocity.vx, -this.movementParams.maxSpeed, this.movementParams.maxSpeed);
+        this.velocity.vy = constrain(this.velocity.vy, -this.movementParams.maxSpeed, this.movementParams.maxSpeed);
+        
+        // Update position
         this.position.x += this.velocity.vx;
         this.position.y += this.velocity.vy;
         
-        // Bounce off edges
-        if (this.position.x <= this.radius || this.position.x >= width - this.radius) {
-            this.velocity.vx *= -0.8; // Damping on bounce
-            this.position.x = constrain(this.position.x, this.radius, width - this.radius);
-        }
-        if (this.position.y <= this.radius || this.position.y >= height - this.radius) {
-            this.velocity.vy *= -0.8; // Damping on bounce
-            this.position.y = constrain(this.position.y, this.radius, height - this.radius);
-        }
+        // Keep within bounds
+        this.position.x = constrain(this.position.x, this.radius, width - this.radius);
+        this.position.y = constrain(this.position.y, this.radius, height - this.radius);
     }
     
     handleTap() {
@@ -321,17 +337,39 @@ class DeviceCircle {
             currentRadius = lerp(this.shrinkRadius, this.radius, shrinkProgress);
         }
         
+        push();
+        
         // Draw device circle with assigned color
         if (this.assignedColor) {
-            fill(...this.assignedColor.rgb);
+            fill(this.assignedColor.r, this.assignedColor.g, this.assignedColor.b);
         } else {
             fill(255, 255, 255); // Default white if no color assigned
         }
         noStroke();
         ellipse(this.position.x, this.position.y, currentRadius * 2);
         
-        // Draw device ID
-      
+        // Draw simple face (eyes) - same as RainyDaySingle
+        // Get sensor data for eye movement (needs to be passed or stored)
+        if (this.lastSensorData) {
+            fill(255);
+            const ax = this._normAccel(this.lastSensorData.ax ?? this.lastSensorData.aX ?? this.lastSensorData.accX);
+            const ay = this._normAccel(this.lastSensorData.ay ?? this.lastSensorData.aY ?? this.lastSensorData.accY);
+            const az = this._normAccel(this.lastSensorData.az ?? this.lastSensorData.aZ ?? this.lastSensorData.accZ);
+            const m = 8 * (1 + 0.15 * az);
+            const ex = ay * m;
+            const ey = -ax * m;
+            ellipse(this.position.x - 10, this.position.y - 8, 16, 16);
+            ellipse(this.position.x + 10, this.position.y - 8, 16, 16);
+            fill(0);
+            ellipse(this.position.x - 10 + ex, this.position.y - 8 + ey, 8, 8);
+            ellipse(this.position.x + 10 + ex, this.position.y - 8 + ey, 8, 8);
+        }
+        
+        pop();
+    }
+    
+    setSensorData(sensorData) {
+        this.lastSensorData = sensorData;
     }
     
     getPosition() {
@@ -347,25 +385,37 @@ class DeviceCircle {
     }
 }
 
-class ParticleDeviceScene extends Scene {
+class Particles extends Scene {
     constructor(deviceManager) {
         super(deviceManager);
         this.particleSystem = new ParticleSystem();
         this.deviceCircles = new Map(); // Store DeviceCircle instances
         
-        // Available colors for device assignment
+        // Available colors for device assignment (same as RainyDaySingle)
         this.availableColors = [
-            { name: 'red', rgb: [255, 0, 0], hex: 'ff0000' },
-            { name: 'green', rgb: [0, 255, 0], hex: '00ff00' },
-            { name: 'blue', rgb: [0, 0, 255], hex: '0000ff' },
-            { name: 'yellow', rgb: [255, 255, 0], hex: 'ffff00' },
-            { name: 'cyan', rgb: [0, 255, 255], hex: '00ffff' },
-            { name: 'magenta', rgb: [255, 0, 255], hex: 'ff00ff' },
-            { name: 'orange', rgb: [255, 165, 0], hex: 'ffa500' }
+            { r: 255, g: 0, b: 0, hex: 'ff0000' },      // red
+            { r: 0, g: 136, b: 255, hex: '0088ff' },    // blue
+            { r: 0, g: 255, b: 102, hex: '08ff0c' },    // green
+            { r: 138, g: 43, b: 226, hex: '8a2be2' },   // purple
+            { r: 255, g: 165, b: 0, hex: 'ff5500' },   // orange (more vibrant orange for LED)
+            { r: 242, g: 242, b: 242, hex: 'ffffff' },  // white
         ];
+        
+        // Movement parameters (same as RainyDaySingle)
+        this.movementParams = {
+            deviceRadius: 40,
+            horizontalGain: 2.5,
+            verticalGain: 2.5,
+            deadzone: 0.05,
+            maxSpeed: 3.0,
+            friction: 0.92,
+        };
     }
     
     setup() {
+        // Clear device circles so they get reassigned colors when entering this scene
+        this.deviceCircles.clear();
+        
         this.particleSystem.setup();
         // Initialize device circles
         const devices = Array.from(this.deviceManager.getAllDevices().values());
@@ -377,7 +427,7 @@ class ParticleDeviceScene extends Scene {
     
     createDeviceCircle(deviceId) {
         if (!this.deviceCircles.has(deviceId)) {
-            const deviceCircle = new DeviceCircle(deviceId, this.deviceManager, this.availableColors);
+            const deviceCircle = new DeviceCircle(deviceId, this.deviceManager, this.availableColors, this.movementParams);
             deviceCircle.setOnTapCallback((x, y, radius) => {
                 this.particleSystem.launchOverlappingParticles(x, y, radius);
             });
@@ -399,6 +449,7 @@ class ParticleDeviceScene extends Scene {
             
             // Update the device circle
             const deviceCircle = this.deviceCircles.get(id);
+            deviceCircle.setSensorData(data); // Store sensor data for eyes
             deviceCircle.update(data);
         }
         
@@ -407,6 +458,41 @@ class ParticleDeviceScene extends Scene {
         for (const id of this.deviceCircles.keys()) {
             if (!currentIds.has(id)) {
                 this.deviceCircles.delete(id);
+            }
+        }
+        
+        // Resolve collisions between devices (same logic as RainyDaySingle)
+        const deviceList = Array.from(this.deviceCircles.values());
+        if (deviceList.length > 1) {
+            const R = this.movementParams.deviceRadius;
+            const minDist = R * 2;
+            const minDistSq = minDist * minDist;
+            
+            for (let i = 0; i < deviceList.length; i++) {
+                for (let j = i + 1; j < deviceList.length; j++) {
+                    const a = deviceList[i];
+                    const b = deviceList[j];
+                    const dx = b.position.x - a.position.x;
+                    const dy = b.position.y - a.position.y;
+                    const distSq = dx * dx + dy * dy;
+                    
+                    if (distSq < minDistSq && distSq > 0) {
+                        const dist = Math.sqrt(distSq);
+                        const overlap = (minDist - dist) * 0.5;
+                        const nx = dx / dist;
+                        const ny = dy / dist;
+                        a.position.x -= nx * overlap;
+                        a.position.y -= ny * overlap;
+                        b.position.x += nx * overlap;
+                        b.position.y += ny * overlap;
+                        
+                        // Keep inside bounds
+                        a.position.x = constrain(a.position.x, R, width - R);
+                        a.position.y = constrain(a.position.y, R, height - R);
+                        b.position.x = constrain(b.position.x, R, width - R);
+                        b.position.y = constrain(b.position.y, R, height - R);
+                    }
+                }
             }
         }
     }
